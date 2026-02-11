@@ -1,60 +1,59 @@
-import React, { useState, useEffect } from 'react';
-export default App;
-
-}
-  );
-    </Router>
-      </div>
-        </main>
-          </Routes>
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/tracker" element={<DailyTracker />} />
-            <Route path="/labels" element={<Labels />} />
-            <Route path="/" element={<Notes />} />
-          <Routes>
-        <main className="main-content">
-        <Navigation />
-      <div className="App">
-    <Router>
-  return (
-function App() {
-
-}
-  );
-    </nav>
-      </ul>
-        ))}
-          </li>
-            </Link>
-              {item.label}
-              <span className="nav-icon">{item.icon}</span>
-            >
-              className={location.pathname === item.path ? 'active' : ''}
-              to={item.path}
-            <Link
-          <li key={item.path}>
-        {navItems.map((item) => (
-      <ul className="nav-links">
-      </div>
-        <h1>📌 Personal Tracker</h1>
-      <div className="nav-brand">
-    <nav className="navbar">
-  return (
-
-  ];
-    { path: '/settings', label: 'Settings', icon: '⚙️' },
-    { path: '/tracker', label: 'Daily Tracker', icon: '📊' },
-    { path: '/labels', label: 'Labels', icon: '🏷️' },
-    { path: '/', label: 'Notes', icon: '📝' },
-  const navItems = [
-
-  const location = useLocation();
-function Navigation() {
-
-import Settings from './components/Settings';
-import DailyTracker from './components/DailyTracker';
-import Labels from './components/Labels';
-import Notes from './components/Notes';
-import './App.css';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import './App.css';
+import Notes from './components/Notes';
+import Labels from './components/Labels';
+import DailyTracker from './components/DailyTracker';
+import Settings from './components/Settings';
 
+function Navigation() {
+  const location = useLocation();
+
+  const navItems = [
+    { path: '/', label: 'Notes', icon: '📝' },
+    { path: '/labels', label: 'Labels', icon: '🏷️' },
+    { path: '/tracker', label: 'Daily Tracker', icon: '📊' },
+    { path: '/settings', label: 'Settings', icon: '⚙️' },
+  ];
+
+  return (
+    <nav className="navbar">
+      <div className="nav-brand">
+        <h1>📌 Personal Tracker</h1>
+      </div>
+      <ul className="nav-links">
+        {navItems.map((item) => (
+          <li key={item.path}>
+            <Link
+              to={item.path}
+              className={location.pathname === item.path ? 'active' : ''}
+            >
+              <span className="nav-icon">{item.icon}</span>
+              {item.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <div className="App">
+        <Navigation />
+        <main className="main-content">
+          <Routes>
+            <Route path="/" element={<Notes />} />
+            <Route path="/labels" element={<Labels />} />
+            <Route path="/tracker" element={<DailyTracker />} />
+            <Route path="/settings" element={<Settings />} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
+  );
+}
+
+export default App;

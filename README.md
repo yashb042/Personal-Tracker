@@ -38,7 +38,7 @@ cd ..
 
 4. Create a `.env` file in the root directory:
 ```env
-PORT=5000
+PORT=5001
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 TELEGRAM_CHAT_ID=your_telegram_chat_id
 WHATSAPP_API_KEY=your_whatsapp_api_key
