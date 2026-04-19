@@ -10,9 +10,9 @@ function Navigation() {
   const location = useLocation();
 
   const navItems = [
-    { path: '/', label: 'Notes', icon: '📝' },
+    { path: '/', label: 'Daily Tracker', icon: '📊' },
+    { path: '/notes', label: 'Notes', icon: '📝' },
     { path: '/labels', label: 'Labels', icon: '🏷️' },
-    { path: '/tracker', label: 'Daily Tracker', icon: '📊' },
     { path: '/settings', label: 'Settings', icon: '⚙️' },
   ];
 
@@ -45,9 +45,9 @@ function App() {
         <Navigation />
         <main className="main-content">
           <Routes>
-            <Route path="/" element={<Notes />} />
+            <Route path="/" element={<DailyTracker />} />
+            <Route path="/notes" element={<Notes />} />
             <Route path="/labels" element={<Labels />} />
-            <Route path="/tracker" element={<DailyTracker />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </main>

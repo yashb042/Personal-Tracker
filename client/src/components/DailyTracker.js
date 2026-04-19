@@ -1,46 +1,85 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import './DailyTracker.css';
 
 function DailyTracker() {
   const [activities, setActivities] = useState([]);
-  const [todayActivity, setTodayActivity] = useState(null);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
+    sleepTime: '',
     wakeUpTime: '',
-    wentToGym: false,
-    outsideFoodEaten: false,
-    notes: ''
+    laptopDropTime: '',
+    gymTime: '',
+    practicedGuitar: false,
   });
-  const [view, setView] = useState('today'); // 'today' or 'history'
+  const [saved, setSaved] = useState(false);
+  const [todayExists, setTodayExists] = useState(false);
+  const [view, setView] = useState('today');
+
+  const fieldRefs = useRef([]);
+
+  const today = new Date().toISOString().split('T')[0];
+
+  const getYesterday = () => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+  };
+
+  const fetchActivities = useCallback(async () => {
+    try {
+      const response = await axios.get('/api/activities');
+      const sorted = response.data.sort((a, b) => new Date(b.date) - new Date(a.date));
+      setActivities(sorted);
+
+      const todayActivity = sorted.find(a => a.date === today);
+      const yesterdayActivity = sorted.find(a => a.date === getYesterday());
+
+      if (todayActivity) {
+        setTodayExists(true);
+        setFormData({
+          date: today,
+          sleepTime: todayActivity.sleepTime || '',
+          wakeUpTime: todayActivity.wakeUpTime || '',
+          laptopDropTime: todayActivity.laptopDropTime || '',
+          gymTime: todayActivity.gymTime || '',
+          practicedGuitar: todayActivity.practicedGuitar || false,
+        });
+      } else if (yesterdayActivity) {
+        // Prefill from yesterday
+        setFormData({
+          date: today,
+          sleepTime: yesterdayActivity.sleepTime || '',
+          wakeUpTime: yesterdayActivity.wakeUpTime || '',
+          laptopDropTime: yesterdayActivity.laptopDropTime || '',
+          gymTime: yesterdayActivity.gymTime || '',
+          practicedGuitar: yesterdayActivity.practicedGuitar || false,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching activities:', error);
+    }
+  }, [today]);
 
   useEffect(() => {
     fetchActivities();
-  }, []);
+  }, [fetchActivities]);
 
+  // Focus first field on mount
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const activity = activities.find(a => a.date === today);
-    if (activity) {
-      setTodayActivity(activity);
-      setFormData({
-        date: activity.date,
-        wakeUpTime: activity.wakeUpTime || '',
-        wentToGym: activity.wentToGym || false,
-        outsideFoodEaten: activity.outsideFoodEaten || false,
-        notes: activity.notes || ''
-      });
-    } else {
-      setTodayActivity(null);
+    if (view === 'today' && fieldRefs.current[0]) {
+      fieldRefs.current[0].focus();
     }
-  }, [activities]);
+  }, [view]);
 
-  const fetchActivities = async () => {
-    try {
-      const response = await axios.get('/api/activities');
-      setActivities(response.data.sort((a, b) => new Date(b.date) - new Date(a.date)));
-    } catch (error) {
-      console.error('Error fetching activities:', error);
+  const handleKeyDown = (e, index) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (index < fieldRefs.current.length - 1) {
+        fieldRefs.current[index + 1]?.focus();
+      } else {
+        handleSubmit(e);
+      }
     }
   };
 
@@ -48,65 +87,35 @@ function DailyTracker() {
     e.preventDefault();
     try {
       await axios.post('/api/activities', formData);
+      setSaved(true);
+      setTodayExists(true);
       fetchActivities();
-      alert('Activity logged successfully! 🎉');
+      setTimeout(() => setSaved(false), 2000);
     } catch (error) {
       console.error('Error saving activity:', error);
-      alert('Error saving activity');
     }
   };
 
-  const getStreak = () => {
-    let streak = 0;
-    const sortedActivities = [...activities].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const questions = [
+    { key: 'sleepTime', label: 'When did you sleep?', icon: '😴', type: 'time' },
+    { key: 'wakeUpTime', label: 'When did you wake up?', icon: '🌅', type: 'time' },
+    { key: 'laptopDropTime', label: 'What time did you drop laptop?', icon: '💻', type: 'time' },
+    { key: 'gymTime', label: 'What time did you go to gym?', icon: '🏋️', type: 'time' },
+    { key: 'practicedGuitar', label: 'Did you practice guitar?', icon: '🎸', type: 'boolean' },
+  ];
 
-    for (let i = 0; i < sortedActivities.length; i++) {
-      const expectedDate = new Date();
-      expectedDate.setDate(expectedDate.getDate() - i);
-      const expectedDateStr = expectedDate.toISOString().split('T')[0];
-
-      if (sortedActivities[i]?.date === expectedDateStr) {
-        streak++;
-      } else {
-        break;
-      }
-    }
-
-    return streak;
+  const formatTime12 = (time24) => {
+    if (!time24) return '--:--';
+    const [h, m] = time24.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
   };
-
-  const getStats = () => {
-    const last7Days = activities.slice(0, 7);
-    const gymDays = last7Days.filter(a => a.wentToGym).length;
-    const cleanDays = last7Days.filter(a => !a.outsideFoodEaten).length;
-    const avgWakeTime = calculateAverageWakeTime(last7Days);
-
-    return { gymDays, cleanDays, avgWakeTime };
-  };
-
-  const calculateAverageWakeTime = (activities) => {
-    const validTimes = activities.filter(a => a.wakeUpTime);
-    if (validTimes.length === 0) return 'N/A';
-
-    const totalMinutes = validTimes.reduce((sum, a) => {
-      const [hours, minutes] = a.wakeUpTime.split(':').map(Number);
-      return sum + (hours * 60 + minutes);
-    }, 0);
-
-    const avgMinutes = totalMinutes / validTimes.length;
-    const hours = Math.floor(avgMinutes / 60);
-    const minutes = Math.round(avgMinutes % 60);
-
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-  };
-
-  const stats = getStats();
-  const streak = getStreak();
 
   return (
     <div className="tracker-container">
       <div className="tracker-header">
-        <h2>📊 Daily Tracker</h2>
+        <h2>Daily Check-in</h2>
         <div className="view-toggle">
           <button
             className={`toggle-btn ${view === 'today' ? 'active' : ''}`}
@@ -124,147 +133,125 @@ function DailyTracker() {
       </div>
 
       {view === 'today' ? (
-        <>
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-icon">🔥</div>
-              <div className="stat-info">
-                <h3>{streak}</h3>
-                <p>Day Streak</p>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon">🏋️</div>
-              <div className="stat-info">
-                <h3>{stats.gymDays}/7</h3>
-                <p>Gym This Week</p>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon">🥗</div>
-              <div className="stat-info">
-                <h3>{stats.cleanDays}/7</h3>
-                <p>Clean Eating</p>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon">⏰</div>
-              <div className="stat-info">
-                <h3>{stats.avgWakeTime}</h3>
-                <p>Avg Wake Time</p>
-              </div>
-            </div>
+        <div className="checkin-card">
+          <div className="checkin-date">
+            {new Date(today).toLocaleDateString('en-US', {
+              weekday: 'long', month: 'long', day: 'numeric'
+            })}
           </div>
 
-          <div className="tracker-form-card">
-            <h3>Log Today's Activities</h3>
-            <form onSubmit={handleSubmit}>
-              <div className="form-row">
-                <div className="input-group">
-                  <label>Date</label>
-                  <input
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    required
-                  />
+          {saved && (
+            <div className="save-toast">Saved!</div>
+          )}
+
+          <form onSubmit={handleSubmit} className="checkin-form">
+            {questions.map((q, index) => (
+              <div key={q.key} className="question-row">
+                <div className="question-label">
+                  <span className="question-icon">{q.icon}</span>
+                  <span>{q.label}</span>
                 </div>
-                <div className="input-group">
-                  <label>Wake Up Time</label>
-                  <input
-                    type="time"
-                    value={formData.wakeUpTime}
-                    onChange={(e) => setFormData({ ...formData, wakeUpTime: e.target.value })}
-                  />
+                <div className="question-input">
+                  {q.type === 'time' ? (
+                    <input
+                      ref={el => fieldRefs.current[index] = el}
+                      type="time"
+                      value={formData[q.key]}
+                      onChange={(e) => setFormData({ ...formData, [q.key]: e.target.value })}
+                      onKeyDown={(e) => handleKeyDown(e, index)}
+                      className="time-input"
+                      tabIndex={index + 1}
+                    />
+                  ) : (
+                    <div className="toggle-switch-wrapper">
+                      <button
+                        ref={el => fieldRefs.current[index] = el}
+                        type="button"
+                        className={`toggle-pill ${formData[q.key] ? 'active' : ''}`}
+                        onClick={() => setFormData({ ...formData, [q.key]: !formData[q.key] })}
+                        onKeyDown={(e) => {
+                          if (e.key === ' ' || e.key === 'Enter') {
+                            e.preventDefault();
+                            if (e.key === ' ') {
+                              setFormData({ ...formData, [q.key]: !formData[q.key] });
+                            } else {
+                              handleKeyDown(e, index);
+                            }
+                          }
+                        }}
+                        tabIndex={index + 1}
+                        role="switch"
+                        aria-checked={formData[q.key]}
+                      >
+                        <span className="pill-label">{formData[q.key] ? 'Yes' : 'No'}</span>
+                        <span className="pill-thumb" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
+            ))}
 
-              <div className="checkbox-group">
-                <label className="checkbox-container">
-                  <input
-                    type="checkbox"
-                    checked={formData.wentToGym}
-                    onChange={(e) => setFormData({ ...formData, wentToGym: e.target.checked })}
-                  />
-                  <span className="checkbox-label">
-                    <span className="checkbox-icon">🏋️</span>
-                    Went to Gym
-                  </span>
-                </label>
+            <button type="submit" className="btn btn-primary btn-submit" tabIndex={questions.length + 1}>
+              {todayExists ? 'Update' : 'Save'}
+            </button>
+          </form>
 
-                <label className="checkbox-container">
-                  <input
-                    type="checkbox"
-                    checked={formData.outsideFoodEaten}
-                    onChange={(e) => setFormData({ ...formData, outsideFoodEaten: e.target.checked })}
-                  />
-                  <span className="checkbox-label">
-                    <span className="checkbox-icon">🍔</span>
-                    Ate Outside Food
-                  </span>
-                </label>
-              </div>
-
-              <div className="input-group">
-                <label>Notes</label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Any additional notes for today..."
-                  rows="3"
-                />
-              </div>
-
-              <button type="submit" className="btn btn-primary btn-block">
-                {todayActivity ? '📝 Update Today\'s Log' : '✅ Log Activity'}
-              </button>
-            </form>
-          </div>
-        </>
+          <p className="prefill-hint">
+            Values prefilled from yesterday. Tab through and update.
+          </p>
+        </div>
       ) : (
         <div className="history-container">
           <h3>Activity History</h3>
           {activities.length > 0 ? (
-            <div className="history-list">
+            <div className="history-grid">
               {activities.map(activity => (
-                <div key={activity.id} className="history-card fade-in">
-                  <div className="history-header">
-                    <h4>{new Date(activity.date).toLocaleDateString('en-US', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}</h4>
-                    <div className="history-badges">
-                      {activity.wakeUpTime && (
-                        <span className="badge badge-time">
-                          ⏰ {activity.wakeUpTime}
-                        </span>
-                      )}
-                      {activity.wentToGym && (
-                        <span className="badge badge-gym">
-                          🏋️ Gym
-                        </span>
-                      )}
-                      {activity.outsideFoodEaten && (
-                        <span className="badge badge-food">
-                          🍔 Outside Food
-                        </span>
-                      )}
-                    </div>
+                <div key={activity.id} className="history-popup fade-in">
+                  <div className="popup-date">
+                    {new Date(activity.date).toLocaleDateString('en-US', {
+                      weekday: 'short', month: 'short', day: 'numeric'
+                    })}
                   </div>
-                  {activity.notes && (
-                    <div className="history-notes">
-                      <p>{activity.notes}</p>
-                    </div>
-                  )}
+                  <div className="popup-items">
+                    {activity.sleepTime && (
+                      <div className="popup-item">
+                        <span className="popup-icon">😴</span>
+                        <span className="popup-value">{formatTime12(activity.sleepTime)}</span>
+                      </div>
+                    )}
+                    {activity.wakeUpTime && (
+                      <div className="popup-item">
+                        <span className="popup-icon">🌅</span>
+                        <span className="popup-value">{formatTime12(activity.wakeUpTime)}</span>
+                      </div>
+                    )}
+                    {activity.laptopDropTime && (
+                      <div className="popup-item">
+                        <span className="popup-icon">💻</span>
+                        <span className="popup-value">{formatTime12(activity.laptopDropTime)}</span>
+                      </div>
+                    )}
+                    {activity.gymTime && (
+                      <div className="popup-item">
+                        <span className="popup-icon">🏋️</span>
+                        <span className="popup-value">{formatTime12(activity.gymTime)}</span>
+                      </div>
+                    )}
+                    {activity.practicedGuitar && (
+                      <div className="popup-item popup-item-guitar">
+                        <span className="popup-icon">🎸</span>
+                        <span className="popup-value">Yes</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           ) : (
             <div className="empty-state">
-              <h4>No activity history yet</h4>
-              <p>Start logging your daily activities to see your progress!</p>
+              <h4>No history yet</h4>
+              <p>Start logging to see your daily patterns.</p>
             </div>
           )}
         </div>

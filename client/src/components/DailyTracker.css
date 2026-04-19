@@ -39,195 +39,228 @@
   color: white;
 }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.stat-card {
+/* Check-in Card */
+.checkin-card {
   background: rgba(255, 255, 255, 0.95);
-  border-radius: 12px;
-  padding: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  box-shadow: var(--shadow);
-  transition: all 0.3s ease;
-}
-
-.stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
-}
-
-.stat-icon {
-  font-size: 3rem;
-  line-height: 1;
-}
-
-.stat-info h3 {
-  font-size: 2rem;
-  color: var(--text-primary);
-  margin-bottom: 0.25rem;
-}
-
-.stat-info p {
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.tracker-form-card {
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 2rem;
   box-shadow: var(--shadow);
+  max-width: 600px;
+  margin: 0 auto;
 }
 
-.tracker-form-card h3 {
-  color: var(--text-primary);
-  margin-bottom: 1.5rem;
-  font-size: 1.5rem;
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.checkbox-group {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.checkbox-container {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem;
-  background: var(--light-bg);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.checkbox-container:hover {
-  background: var(--border-color);
-}
-
-.checkbox-container input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.checkbox-icon {
-  font-size: 1.5rem;
-}
-
-.btn-block {
-  width: 100%;
-  justify-content: center;
-  margin-top: 1rem;
+.checkin-date {
+  text-align: center;
   font-size: 1.1rem;
-  padding: 1rem;
-}
-
-.history-container {
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: var(--shadow);
-}
-
-.history-container h3 {
-  color: var(--text-primary);
+  color: var(--text-secondary);
+  font-weight: 600;
   margin-bottom: 1.5rem;
-  font-size: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
 }
 
-.history-list {
+/* Save Toast */
+.save-toast {
+  text-align: center;
+  background: #d1fae5;
+  color: #065f46;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  animation: fadeIn 0.3s ease;
+}
+
+/* Check-in Form */
+.checkin-form {
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
-.history-card {
-  background: var(--light-bg);
-  border-radius: 8px;
-  padding: 1.5rem;
-  transition: all 0.3s ease;
-}
-
-.history-card:hover {
-  transform: translateX(4px);
-  box-shadow: var(--shadow);
-}
-
-.history-header {
+.question-row {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1rem;
-  gap: 1rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: var(--light-bg);
+  border-radius: 10px;
+  transition: background 0.2s ease;
 }
 
-.history-header h4 {
-  color: var(--text-primary);
-  font-size: 1.1rem;
+.question-row:hover {
+  background: #eef2ff;
 }
 
-.history-badges {
+.question-label {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.badge {
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.875rem;
+  align-items: center;
+  gap: 0.75rem;
   font-weight: 600;
-  white-space: nowrap;
+  color: var(--text-primary);
+  font-size: 0.95rem;
 }
 
-.badge-time {
-  background: #dbeafe;
-  color: #1e40af;
+.question-icon {
+  font-size: 1.4rem;
+  line-height: 1;
 }
 
-.badge-gym {
+.question-input {
+  flex-shrink: 0;
+}
+
+/* Time Input */
+.time-input {
+  padding: 0.5rem 0.75rem;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: white;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  width: 140px;
+}
+
+.time-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* Toggle Pill */
+.toggle-switch-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.toggle-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem 0.4rem 1rem;
+  border-radius: 50px;
+  border: 2px solid var(--border-color);
+  background: #f1f5f9;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 100px;
+  justify-content: space-between;
+}
+
+.toggle-pill:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.toggle-pill.active {
   background: #d1fae5;
+  border-color: #34d399;
   color: #065f46;
 }
 
-.badge-food {
-  background: #fed7aa;
-  color: #92400e;
+.pill-label {
+  user-select: none;
 }
 
-.history-notes {
-  padding-top: 1rem;
-  border-top: 1px solid var(--border-color);
+.pill-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease;
 }
 
-.history-notes p {
+.toggle-pill.active .pill-thumb {
+  background: #10b981;
+}
+
+/* Submit Button */
+.btn-submit {
+  width: 100%;
+  justify-content: center;
+  margin-top: 0.5rem;
+  font-size: 1.05rem;
+  padding: 0.85rem;
+}
+
+/* Prefill Hint */
+.prefill-hint {
+  text-align: center;
   color: var(--text-secondary);
-  line-height: 1.6;
+  font-size: 0.8rem;
+  margin-top: 1rem;
+  opacity: 0.7;
+}
+
+/* History */
+.history-container h3 {
+  color: white;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.history-popup {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.history-popup:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.popup-date {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.popup-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.popup-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.popup-icon {
+  font-size: 1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.popup-value {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.popup-item-guitar .popup-value {
+  color: #9d174d;
 }
 
 .empty-state {
@@ -246,21 +279,29 @@
 }
 
 @media (max-width: 768px) {
-  .stats-grid {
-    grid-template-columns: 1fr;
+  .checkin-card {
+    padding: 1.25rem;
   }
 
-  .form-row,
-  .checkbox-group {
-    grid-template-columns: 1fr;
-  }
-
-  .history-header {
+  .question-row {
     flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .question-input {
+    width: 100%;
+  }
+
+  .time-input {
+    width: 100%;
+  }
+
+  .toggle-pill {
+    width: 100%;
   }
 
   .history-badges {
     width: 100%;
   }
 }
-

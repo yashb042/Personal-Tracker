@@ -19,10 +19,10 @@ let notes = [];
 let labels = [];
 let dailyActivities = [];
 let notificationSettings = {
-  enabled: false,
-  time: '09:00',
+  enabled: true,
+  time: '22:00',
   method: 'telegram', // 'telegram' or 'whatsapp'
-  message: 'Good morning! Don\'t forget to log your activities today! 🌟'
+  message: 'Hey! Have you logged your daily tracker yet? Don\'t forget to fill it in before bed.'
 };
 
 // Generate unique IDs
@@ -140,7 +140,7 @@ app.get('/api/activities', (req, res) => {
 });
 
 app.post('/api/activities', (req, res) => {
-  const { date, wakeUpTime, wentToGym, outsideFoodEaten, notes: activityNotes } = req.body;
+  const { date, sleepTime, wakeUpTime, laptopDropTime, gymTime, practicedGuitar } = req.body;
 
   // Check if activity for this date already exists
   const existingIndex = dailyActivities.findIndex(a => a.date === date);
@@ -148,10 +148,11 @@ app.post('/api/activities', (req, res) => {
   const activity = {
     id: existingIndex !== -1 ? dailyActivities[existingIndex].id : generateId(),
     date,
-    wakeUpTime,
-    wentToGym,
-    outsideFoodEaten,
-    notes: activityNotes || '',
+    sleepTime: sleepTime || '',
+    wakeUpTime: wakeUpTime || '',
+    laptopDropTime: laptopDropTime || '',
+    gymTime: gymTime || '',
+    practicedGuitar: practicedGuitar || false,
     createdAt: existingIndex !== -1 ? dailyActivities[existingIndex].createdAt : new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };

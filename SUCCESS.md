@@ -47,13 +47,13 @@ Open **TWO** terminal windows:
 
 **Terminal 1 - Backend:**
 ```bash
-cd "/Users/ybansal/workspace/mlp-streaming/Personal Tracker"
+cd "/Users/ybansal/workspace/Personal Tracker"
 PORT=5002 node server.js
 ```
 
 **Terminal 2 - Frontend:**
 ```bash
-cd "/Users/ybansal/workspace/mlp-streaming/Personal Tracker/client"
+cd "/Users/ybansal/workspace/Personal Tracker/client"
 npm start
 ```
 
@@ -195,7 +195,7 @@ Personal Tracker/
 ### Step 2: Push Your Code
 
 ```bash
-cd "/Users/ybansal/workspace/mlp-streaming/Personal Tracker"
+cd "/Users/ybansal/workspace/Personal Tracker"
 
 # Add remote
 git remote add origin https://github.com/YOUR_USERNAME/personal-tracker.git
