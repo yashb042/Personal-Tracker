@@ -14,9 +14,10 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        shell: bash
         run: |
           # Target date: July 31, 2026
-          TARGET_EPOCH=$(date -d "2026-07-31 23:59:59" +%s 2>/dev/null || date -j -f "%Y-%m-%d %H:%M:%S" "2026-07-31 23:59:59" +%s)
+          TARGET_EPOCH=$(date -d "2026-07-31 23:59:59" +%s)
           NOW_EPOCH=$(date +%s)
           DAYS_LEFT=$(( (TARGET_EPOCH - NOW_EPOCH) / 86400 ))
           if [ "$DAYS_LEFT" -lt 0 ]; then DAYS_LEFT=0; fi
