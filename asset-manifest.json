@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/Personal-Tracker/static/css/main.2d81b4c5.css",
+    "main.js": "/Personal-Tracker/static/js/main.5e6f01ed.js",
+    "index.html": "/Personal-Tracker/index.html",
+    "main.2d81b4c5.css.map": "/Personal-Tracker/static/css/main.2d81b4c5.css.map",
+    "main.5e6f01ed.js.map": "/Personal-Tracker/static/js/main.5e6f01ed.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.2d81b4c5.css",
+    "static/js/main.5e6f01ed.js"
+  ]
+}
