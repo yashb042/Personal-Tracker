@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import axios from 'axios';
+import { getActivities, saveActivity } from '../storage';
 import './DailyTracker.css';
 
 function DailyTracker() {
@@ -10,7 +10,11 @@ function DailyTracker() {
     wakeUpTime: '',
     laptopDropTime: '',
     gymTime: '',
+    sportPlayed: '',
     practicedGuitar: false,
+    ateSweets: false,
+    fuckedMorning: false,
+    plannedTomorrow: false,
   });
   const [saved, setSaved] = useState(false);
   const [todayExists, setTodayExists] = useState(false);
@@ -26,38 +30,41 @@ function DailyTracker() {
     return d.toISOString().split('T')[0];
   };
 
-  const fetchActivities = useCallback(async () => {
-    try {
-      const response = await axios.get('/api/activities');
-      const sorted = response.data.sort((a, b) => new Date(b.date) - new Date(a.date));
-      setActivities(sorted);
+  const fetchActivities = useCallback(() => {
+    const all = getActivities();
+    const sorted = [...all].sort((a, b) => new Date(b.date) - new Date(a.date));
+    setActivities(sorted);
 
-      const todayActivity = sorted.find(a => a.date === today);
-      const yesterdayActivity = sorted.find(a => a.date === getYesterday());
+    const todayActivity = sorted.find(a => a.date === today);
+    const yesterdayActivity = sorted.find(a => a.date === getYesterday());
 
-      if (todayActivity) {
-        setTodayExists(true);
-        setFormData({
-          date: today,
-          sleepTime: todayActivity.sleepTime || '',
-          wakeUpTime: todayActivity.wakeUpTime || '',
-          laptopDropTime: todayActivity.laptopDropTime || '',
-          gymTime: todayActivity.gymTime || '',
-          practicedGuitar: todayActivity.practicedGuitar || false,
-        });
-      } else if (yesterdayActivity) {
-        // Prefill from yesterday
-        setFormData({
-          date: today,
-          sleepTime: yesterdayActivity.sleepTime || '',
-          wakeUpTime: yesterdayActivity.wakeUpTime || '',
-          laptopDropTime: yesterdayActivity.laptopDropTime || '',
-          gymTime: yesterdayActivity.gymTime || '',
-          practicedGuitar: yesterdayActivity.practicedGuitar || false,
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching activities:', error);
+    if (todayActivity) {
+      setTodayExists(true);
+      setFormData({
+        date: today,
+        sleepTime: todayActivity.sleepTime || '',
+        wakeUpTime: todayActivity.wakeUpTime || '',
+        laptopDropTime: todayActivity.laptopDropTime || '',
+        gymTime: todayActivity.gymTime || '',
+        sportPlayed: todayActivity.sportPlayed || '',
+        practicedGuitar: todayActivity.practicedGuitar || false,
+        ateSweets: todayActivity.ateSweets || false,
+        fuckedMorning: todayActivity.fuckedMorning || false,
+        plannedTomorrow: todayActivity.plannedTomorrow || false,
+      });
+    } else if (yesterdayActivity) {
+      setFormData({
+        date: today,
+        sleepTime: yesterdayActivity.sleepTime || '',
+        wakeUpTime: yesterdayActivity.wakeUpTime || '',
+        laptopDropTime: yesterdayActivity.laptopDropTime || '',
+        gymTime: yesterdayActivity.gymTime || '',
+        sportPlayed: '',
+        practicedGuitar: yesterdayActivity.practicedGuitar || false,
+        ateSweets: false,
+        fuckedMorning: false,
+        plannedTomorrow: false,
+      });
     }
   }, [today]);
 
@@ -83,17 +90,13 @@ function DailyTracker() {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    try {
-      await axios.post('/api/activities', formData);
-      setSaved(true);
-      setTodayExists(true);
-      fetchActivities();
-      setTimeout(() => setSaved(false), 2000);
-    } catch (error) {
-      console.error('Error saving activity:', error);
-    }
+    saveActivity(formData);
+    setSaved(true);
+    setTodayExists(true);
+    fetchActivities();
+    setTimeout(() => setSaved(false), 2000);
   };
 
   const questions = [
@@ -101,7 +104,12 @@ function DailyTracker() {
     { key: 'wakeUpTime', label: 'When did you wake up?', icon: '🌅', type: 'time' },
     { key: 'laptopDropTime', label: 'What time did you drop laptop?', icon: '💻', type: 'time' },
     { key: 'gymTime', label: 'What time did you go to gym?', icon: '🏋️', type: 'time' },
+    { key: 'sportPlayed', label: 'Did you play any sport?', icon: '🏃', type: 'select',
+      options: ['', 'Football', 'Cricket', 'Badminton', 'Swimming', 'Running', 'Other sport', 'No'] },
     { key: 'practicedGuitar', label: 'Did you practice guitar?', icon: '🎸', type: 'boolean' },
+    { key: 'ateSweets', label: 'Did you eat sweets?', icon: '🍬', type: 'boolean' },
+    { key: 'fuckedMorning', label: 'Did you fuck your morning?', icon: '🌅', type: 'boolean' },
+    { key: 'plannedTomorrow', label: 'Did you plan stuff for tomorrow?', icon: '📋', type: 'boolean' },
   ];
 
   const formatTime12 = (time24) => {
@@ -158,6 +166,32 @@ function DailyTracker() {
                       type="time"
                       value={formData[q.key]}
                       onChange={(e) => setFormData({ ...formData, [q.key]: e.target.value })}
+                      onKeyDown={(e) => handleKeyDown(e, index)}
+                      className="time-input"
+                      tabIndex={index + 1}
+                    />
+                  ) : q.type === 'select' ? (
+                    <select
+                      ref={el => fieldRefs.current[index] = el}
+                      value={formData[q.key]}
+                      onChange={(e) => setFormData({ ...formData, [q.key]: e.target.value })}
+                      onKeyDown={(e) => handleKeyDown(e, index)}
+                      className="time-input"
+                      tabIndex={index + 1}
+                    >
+                      {q.options.map(opt => (
+                        <option key={opt} value={opt}>{opt === '' ? '— select —' : opt}</option>
+                      ))}
+                    </select>
+                  ) : q.type === 'number' ? (
+                    <input
+                      ref={el => fieldRefs.current[index] = el}
+                      type="number"
+                      min={q.min}
+                      max={q.max}
+                      step={q.step}
+                      value={formData[q.key]}
+                      onChange={(e) => setFormData({ ...formData, [q.key]: e.target.value === '' ? 0 : Number(e.target.value) })}
                       onKeyDown={(e) => handleKeyDown(e, index)}
                       className="time-input"
                       tabIndex={index + 1}
@@ -238,9 +272,33 @@ function DailyTracker() {
                         <span className="popup-value">{formatTime12(activity.gymTime)}</span>
                       </div>
                     )}
+                    {activity.sportPlayed && activity.sportPlayed !== 'No' && (
+                      <div className="popup-item">
+                        <span className="popup-icon">🏃</span>
+                        <span className="popup-value">{activity.sportPlayed}</span>
+                      </div>
+                    )}
                     {activity.practicedGuitar && (
                       <div className="popup-item popup-item-guitar">
                         <span className="popup-icon">🎸</span>
+                        <span className="popup-value">Yes</span>
+                      </div>
+                    )}
+                    {activity.ateSweets && (
+                      <div className="popup-item">
+                        <span className="popup-icon">🍬</span>
+                        <span className="popup-value">Yes</span>
+                      </div>
+                    )}
+                    {activity.fuckedMorning && (
+                      <div className="popup-item">
+                        <span className="popup-icon">💀</span>
+                        <span className="popup-value">Bad AM</span>
+                      </div>
+                    )}
+                    {activity.plannedTomorrow && (
+                      <div className="popup-item">
+                        <span className="popup-icon">📋</span>
                         <span className="popup-value">Yes</span>
                       </div>
                     )}

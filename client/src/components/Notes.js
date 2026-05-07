@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { getNotes, getLabels, createNote, updateNote, deleteNote } from '../storage';
 import './Notes.css';
 
 function Notes() {
@@ -16,51 +16,29 @@ function Notes() {
   });
 
   useEffect(() => {
-    fetchNotes();
-    fetchLabels();
+    reload();
   }, []);
 
-  const fetchNotes = async () => {
-    try {
-      const response = await axios.get('/api/notes');
-      setNotes(response.data);
-    } catch (error) {
-      console.error('Error fetching notes:', error);
-    }
+  const reload = () => {
+    setNotes(getNotes());
+    setLabels(getLabels());
   };
 
-  const fetchLabels = async () => {
-    try {
-      const response = await axios.get('/api/labels');
-      setLabels(response.data);
-    } catch (error) {
-      console.error('Error fetching labels:', error);
-    }
-  };
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    try {
-      if (editingNote) {
-        await axios.put(`/api/notes/${editingNote.id}`, formData);
-      } else {
-        await axios.post('/api/notes', formData);
-      }
-      fetchNotes();
-      resetForm();
-    } catch (error) {
-      console.error('Error saving note:', error);
+    if (editingNote) {
+      updateNote(editingNote.id, formData);
+    } else {
+      createNote(formData);
     }
+    reload();
+    resetForm();
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = (id) => {
     if (window.confirm('Are you sure you want to delete this note?')) {
-      try {
-        await axios.delete(`/api/notes/${id}`);
-        fetchNotes();
-      } catch (error) {
-        console.error('Error deleting note:', error);
-      }
+      deleteNote(id);
+      reload();
     }
   };
 

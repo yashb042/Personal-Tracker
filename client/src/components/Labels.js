@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { getNotes, getLabels, createLabel, updateLabel, deleteLabel } from '../storage';
 import './Labels.css';
 
 function Labels() {
@@ -14,54 +14,31 @@ function Labels() {
   });
 
   useEffect(() => {
-    fetchLabels();
-    fetchNotes();
+    reload();
   }, []);
 
-  const fetchLabels = async () => {
-    try {
-      const response = await axios.get('/api/labels');
-      setLabels(response.data);
-    } catch (error) {
-      console.error('Error fetching labels:', error);
-    }
+  const reload = () => {
+    setLabels(getLabels());
+    setNotes(getNotes());
   };
 
-  const fetchNotes = async () => {
-    try {
-      const response = await axios.get('/api/notes');
-      setNotes(response.data);
-    } catch (error) {
-      console.error('Error fetching notes:', error);
-    }
-  };
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    try {
-      if (editingLabel) {
-        await axios.put(`/api/labels/${editingLabel.id}`, formData);
-      } else {
-        await axios.post('/api/labels', formData);
-      }
-      fetchLabels();
-      resetForm();
-    } catch (error) {
-      console.error('Error saving label:', error);
+    if (editingLabel) {
+      updateLabel(editingLabel.id, formData);
+    } else {
+      createLabel(formData);
     }
+    reload();
+    resetForm();
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = (id) => {
     if (window.confirm('Are you sure? This will remove the label from all notes.')) {
-      try {
-        await axios.delete(`/api/labels/${id}`);
-        fetchLabels();
-        fetchNotes();
-        if (selectedLabel?.id === id) {
-          setSelectedLabel(null);
-        }
-      } catch (error) {
-        console.error('Error deleting label:', error);
+      deleteLabel(id);
+      reload();
+      if (selectedLabel?.id === id) {
+        setSelectedLabel(null);
       }
     }
   };
