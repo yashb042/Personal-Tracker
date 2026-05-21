@@ -21,7 +21,19 @@ function todayDateIST() {
 }
 
 function toBase64Utf8(str) {
-  return btoa(unescape(encodeURIComponent(str)));
+  const bytes = new TextEncoder().encode(str);
+  let binary = '';
+  bytes.forEach((b) => { binary += String.fromCharCode(b); });
+  return btoa(binary);
+}
+
+function apiHeaders(pat) {
+  return {
+    Authorization: `Bearer ${pat}`,
+    Accept: 'application/vnd.github+json',
+    'Content-Type': 'application/json',
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
 }
 
 async function getFileSha(path, headers) {
@@ -32,7 +44,7 @@ async function getFileSha(path, headers) {
     return meta.sha;
   }
   if (res.status === 404) return null;
-  throw new Error('read_failed');
+  throw new Error(`read_failed:${res.status}`);
 }
 
 async function putFile(path, content, message, headers) {
@@ -45,7 +57,27 @@ async function putFile(path, content, message, headers) {
   };
   if (sha) body.sha = sha;
   const res = await fetch(url, { method: 'PUT', headers, body: JSON.stringify(body) });
-  if (!res.ok) throw new Error('write_failed');
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `write_failed:${res.status}`);
+  }
+}
+
+export async function fetchActivitiesFromGithub(pat) {
+  const token = pat || getGithubPat();
+  if (!token) return { ok: false, reason: 'no_pat', activities: [] };
+
+  try {
+    const url = `https://api.github.com/repos/${REPO}/contents/${ACTIVITIES_PATH}?ref=${BRANCH}`;
+    const res = await fetch(url, { headers: apiHeaders(token) });
+    if (!res.ok) return { ok: false, reason: `http_${res.status}`, activities: [] };
+    const meta = await res.json();
+    const json = JSON.parse(atob(meta.content.replace(/\s/g, '')));
+    const activities = Array.isArray(json) ? json : [];
+    return { ok: true, activities };
+  } catch (e) {
+    return { ok: false, reason: 'fetch_error', activities: [] };
+  }
 }
 
 async function markTodayLoggedInBotState(headers) {
@@ -59,7 +91,7 @@ async function markTodayLoggedInBotState(headers) {
     const res = await fetch(url, { headers });
     if (res.ok) {
       const meta = await res.json();
-      state = JSON.parse(atob(meta.content.replace(/\n/g, '')));
+      state = JSON.parse(atob(meta.content.replace(/\s/g, '')));
     }
   } catch { /* use default */ }
   const today = todayDateIST();
@@ -76,12 +108,7 @@ export async function pushActivitiesToGithub(activities) {
   const pat = getGithubPat();
   if (!pat) return { ok: false, reason: 'no_pat' };
 
-  const headers = {
-    Authorization: `Bearer ${pat}`,
-    Accept: 'application/vnd.github+json',
-    'Content-Type': 'application/json',
-    'X-GitHub-Api-Version': '2022-11-28',
-  };
+  const headers = apiHeaders(pat);
 
   try {
     await putFile(
@@ -92,7 +119,7 @@ export async function pushActivitiesToGithub(activities) {
     );
     await markTodayLoggedInBotState(headers);
     return { ok: true };
-  } catch {
-    return { ok: false, reason: 'write_failed' };
+  } catch (e) {
+    return { ok: false, reason: e.message || 'write_failed' };
   }
 }

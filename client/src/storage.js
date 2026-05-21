@@ -1,6 +1,6 @@
 // Static storage for GitHub Pages + optional instant GitHub API sync (Telegram Web App).
 
-import { pushActivitiesToGithub } from './githubSync';
+import { pushActivitiesToGithub, fetchActivitiesFromGithub, getGithubPat } from './githubSync';
 
 const REMOTE_ACTIVITIES_URL =
   'https://raw.githubusercontent.com/yashb042/Personal-Tracker/master/data/activities.json';
@@ -112,8 +112,27 @@ export function getActivities() {
   return load(STORAGE_KEYS.activities, []);
 }
 
-/** Merge activities from GitHub (Telegram bot / Actions) into localStorage. */
+function normalizeActivity(a) {
+  if (!a) return a;
+  const out = { ...a };
+  if (!out.morningRoutine && out.fuckedMorning) {
+    out.morningRoutine = out.fuckedMorning ? 'Bad morning' : '';
+  }
+  return out;
+}
+
+/** Load latest activities from GitHub into localStorage. */
 export async function syncActivitiesFromCloud() {
+  const pat = getGithubPat();
+  if (pat) {
+    const api = await fetchActivitiesFromGithub(pat);
+    if (api.ok) {
+      const normalized = api.activities.map(normalizeActivity);
+      save(STORAGE_KEYS.activities, normalized);
+      return { synced: true, count: normalized.length, source: 'api' };
+    }
+  }
+
   const local = getActivities();
   try {
     const res = await fetch(`${REMOTE_ACTIVITIES_URL}?t=${Date.now()}`, {
@@ -123,16 +142,9 @@ export async function syncActivitiesFromCloud() {
     const remote = await res.json();
     if (!Array.isArray(remote)) return { synced: false, count: local.length };
 
-    const byDate = new Map(local.map((a) => [a.date, a]));
-    for (const entry of remote) {
-      const existing = byDate.get(entry.date);
-      if (!existing || new Date(entry.updatedAt || 0) >= new Date(existing.updatedAt || 0)) {
-        byDate.set(entry.date, entry);
-      }
-    }
-    const merged = [...byDate.values()].sort((a, b) => b.date.localeCompare(a.date));
-    save(STORAGE_KEYS.activities, merged);
-    return { synced: true, count: merged.length };
+    const normalized = remote.map(normalizeActivity);
+    save(STORAGE_KEYS.activities, normalized);
+    return { synced: true, count: normalized.length, source: 'cdn' };
   } catch {
     return { synced: false, count: local.length };
   }
@@ -156,12 +168,21 @@ export function saveActivity(data) {
   return entry;
 }
 
-/** Save locally then push to GitHub immediately (for Telegram Web App). */
+/** Save locally, push to GitHub, then reload from API so UI matches repo. */
 export async function saveActivityWithCloudSync(data) {
-  const entry = saveActivity(data);
+  const normalized = normalizeActivity(data);
+  const entry = saveActivity(normalized);
   const activities = getActivities();
   const cloud = await pushActivitiesToGithub(activities);
-  return { entry, cloud };
+
+  if (cloud.ok && getGithubPat()) {
+    const fresh = await fetchActivitiesFromGithub();
+    if (fresh.ok) {
+      save(STORAGE_KEYS.activities, fresh.activities.map(normalizeActivity));
+    }
+  }
+
+  return { entry: getActivities().find((a) => a.date === normalized.date) || entry, cloud };
 }
 
 // ── Notification Settings ─────────────────────────────
