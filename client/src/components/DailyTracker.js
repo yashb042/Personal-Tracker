@@ -31,9 +31,9 @@ const QUESTIONS = [
     icon: '💻',
     type: 'chips',
     options: [
-      ['5 PM', '5:30 PM', '6 PM', '6:30 PM'],
-      ['7 PM', '7:30 PM', '8 PM', '9 PM'],
-      ['10 PM', 'After 10 PM'],
+      ['9 PM', '9:30 PM', '10 PM', '10:30 PM'],
+      ['11 PM', '11:30 PM', '12 AM', '12:30 AM'],
+      ['1 AM', 'After 1 AM'],
     ],
   },
   {
