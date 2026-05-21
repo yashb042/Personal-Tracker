@@ -1,9 +1,15 @@
 {
   "botPollingOffset": 0,
-  "conversations": {},
+  "conversations": {
+    "8364336626": {
+      "step": 0,
+      "answers": {},
+      "date": "2026-05-21"
+    }
+  },
   "dailyNagState": {
-    "date": null,
+    "date": "2026-05-21",
     "completed": false,
-    "nagCount": 0
+    "nagCount": 1
   }
 }
