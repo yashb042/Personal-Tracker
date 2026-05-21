@@ -207,19 +207,39 @@ async function answerCallback(callbackQueryId) {
   } catch { /* ignore */ }
 }
 
-function buildInlineKeyboard(options) {
+function flattenOptions(options) {
+  const flat = [];
+  for (const row of options) {
+    for (const text of row) flat.push(text);
+  }
+  return flat;
+}
+
+function buildInlineKeyboard(stepIndex, options) {
+  let optIdx = 0;
   return {
     reply_markup: {
       inline_keyboard: options.map((row) =>
-        row.map((text) => ({ text, callback_data: `track_${text}` }))
+        row.map((text) => {
+          const cb = `t:${stepIndex}:${optIdx}`;
+          optIdx++;
+          return { text, callback_data: cb };
+        })
       ),
     },
   };
 }
 
+function answerFromCallback(stepIndex, optIndex) {
+  const step = TRACKING_STEPS[stepIndex];
+  if (!step) return null;
+  const flat = flattenOptions(step.options);
+  return flat[optIndex] ?? null;
+}
+
 async function sendStep(chatId, stepIndex) {
   const step = TRACKING_STEPS[stepIndex];
-  await sendMessage(chatId, step.question, buildInlineKeyboard(step.options));
+  await sendMessage(chatId, step.question, buildInlineKeyboard(stepIndex, step.options));
 }
 
 async function startTracking(chatId) {
@@ -383,11 +403,31 @@ async function handleBotMessage(msg) {
 
 async function handleCallbackQuery(query) {
   const chatId = query.message.chat.id;
-  const data = (query.data || '').replace(/^track_/, '');
+  const raw = query.data || '';
   await answerCallback(query.id);
-  if (state.conversations[String(chatId)]) {
-    await processAnswer(chatId, data);
+
+  let answerText = null;
+  const m = raw.match(/^t:(\d+):(\d+)$/);
+  if (m) {
+    answerText = answerFromCallback(parseInt(m[1], 10), parseInt(m[2], 10));
+  } else if (raw.startsWith('track_')) {
+    answerText = raw.replace(/^track_/, '');
   }
+
+  if (!answerText) {
+    await sendMessage(chatId, 'Unknown button. Type *log* to start again.');
+    return;
+  }
+
+  const key = String(chatId);
+  if (!state.conversations[key]) {
+    await sendMessage(
+      chatId,
+      '⏳ That prompt expired (cloud bot syncs every ~2 min). Type *log* to start again, or wait a moment and tap again.'
+    );
+    return;
+  }
+  await processAnswer(chatId, answerText);
 }
 
 // ── Scheduled jobs ────────────────────────────────────
@@ -473,18 +513,41 @@ async function runHourlyNag() {
   await sendTelegramToUser(nagMessages[Math.floor(Math.random() * nagMessages.length)]);
 }
 
-async function pollBot() {
+async function pollBotOnce(timeout = 0) {
   const res = await fetch(
-    `${BOT_API}/getUpdates?offset=${state.botPollingOffset}&timeout=10&allowed_updates=${encodeURIComponent(JSON.stringify(['message', 'callback_query']))}`
+    `${BOT_API}/getUpdates?offset=${state.botPollingOffset}&timeout=${timeout}&allowed_updates=${encodeURIComponent(JSON.stringify(['message', 'callback_query']))}`
   );
   const data = await res.json();
   if (!data.ok) throw new Error(data.description || 'getUpdates failed');
-  for (const update of data.result || []) {
+  const updates = data.result || [];
+  for (const update of updates) {
     state.botPollingOffset = update.update_id + 1;
     if (update.message) await handleBotMessage(update.message);
     else if (update.callback_query) await handleCallbackQuery(update.callback_query);
   }
   persistState();
+  return updates.length;
+}
+
+async function pollBot() {
+  let total = 0;
+  for (let i = 0; i < 20; i++) {
+    const n = await pollBotOnce(0);
+    total += n;
+    if (n === 0) break;
+  }
+  console.log(`Processed ${total} Telegram update(s)`);
+}
+
+async function pollBurst() {
+  let total = 0;
+  for (let i = 0; i < 30; i++) {
+    const n = await pollBotOnce(0);
+    total += n;
+    if (n === 0 && i > 2) break;
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  console.log(`Burst processed ${total} Telegram update(s)`);
 }
 
 // ── CLI ───────────────────────────────────────────────
@@ -502,12 +565,18 @@ async function main() {
       await pollBot();
       console.log('Bot poll complete');
       break;
+    case 'poll-burst':
+      await pollBurst();
+      console.log('Bot poll burst complete');
+      break;
     case 'daily-prompt':
       await runDailyPrompt();
+      await pollBurst();
       console.log('Daily 8 AM prompt sent');
       break;
     case 'hourly-nag':
       await runHourlyNag();
+      await pollBurst();
       console.log('Hourly nag sent (if needed)');
       break;
     case 'midweek':

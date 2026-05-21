@@ -3,14 +3,17 @@ name: Telegram Bot Poll
 # Poll Telegram every 5 minutes (GitHub minimum). Replaces local server.js bot polling.
 on:
   schedule:
+    # GitHub minimum 5 min — stagger 3 workflows ≈ every ~2 min
     - cron: '*/5 * * * *'
+    - cron: '2-59/5 * * * *'
+    - cron: '4-59/5 * * * *'
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: telegram-bot-poll
+  group: tracker-telegram-data
   cancel-in-progress: false
 
 jobs:
@@ -28,7 +31,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           PAGES_URL: https://yashb042.github.io/Personal-Tracker/
-        run: node scripts/telegram-tracker.mjs poll
+        run: node scripts/telegram-tracker.mjs poll-burst
 
       - name: Commit data changes
         uses: stefanzweifel/git-auto-commit-action@v5

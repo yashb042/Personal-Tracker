@@ -38,7 +38,9 @@ https://yashb042.github.io/Personal-Tracker/
 
 | Workflow | Schedule | Purpose |
 |----------|----------|---------|
-| `telegram-bot.yml` | Every 5 min | Poll Telegram; handle `log`, buttons, history |
+| `telegram-bot.yml` | ~every 2 min | Poll Telegram; handle `log`, **button taps**, history |
+
+**Button taps:** The cloud bot is not instant like your old laptop server. Taps are processed on the next poll (~2 min). If nothing happens, type *log* again or wait and tap once more.
 | `tracker-scheduler.yml` | 8 AM IST | Start daily tracking in Telegram |
 | `tracker-scheduler.yml` | Hourly 9 AM–10 PM IST | Nag until today is logged |
 | `tracker-scheduler.yml` | Wed / Fri / Sun | Midweek, Friday, weekly report |
