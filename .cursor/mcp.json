@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "telegram": {
+      "command": "/Users/yash.bansal/workspace/Personal-Tracker/scripts/mcp-telegram.sh",
+      "args": []
+    }
+  }
+}

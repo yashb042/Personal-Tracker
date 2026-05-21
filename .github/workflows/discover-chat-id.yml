@@ -1,0 +1,31 @@
+name: Discover Telegram Chat ID
+
+on:
+  workflow_dispatch:
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get chat ID from recent updates
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          set -e
+          RESP=$(curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates")
+          echo "$RESP" | node -e "
+            const d = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+            if (!d.ok) { console.error('API error:', d.description); process.exit(1); }
+            const msgs = (d.result || []).filter(u => u.message?.chat?.id);
+            if (!msgs.length) {
+              console.log('No messages yet. Open your bot in Telegram and send /start, then re-run this workflow.');
+              process.exit(1);
+            }
+            const last = msgs[msgs.length - 1].message.chat;
+            console.log('Latest chat:');
+            console.log('  id:', last.id);
+            console.log('  type:', last.type);
+            console.log('  username:', last.username || '(none)');
+            console.log('');
+            console.log('Set GitHub secret TELEGRAM_CHAT_ID to:', last.id);
+          "

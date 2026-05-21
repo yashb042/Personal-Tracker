@@ -2,6 +2,18 @@
 
 The tracker no longer needs your laptop running. The web UI is on GitHub Pages; Telegram reminders and the bot run via GitHub Actions.
 
+## 0. Telegram MCP in Cursor (optional)
+
+1. Run once locally (creates `.env`, never committed):
+
+   ```bash
+   ./scripts/setup-telegram-env.sh
+   ```
+
+2. **Restart Cursor** so the Telegram MCP server loads (`.cursor/mcp.json` + global `~/.cursor/mcp.json`).
+
+3. In chat you can ask the agent to use `tg_get_me`, `tg_send_message`, etc.
+
 ## 1. Repository secrets
 
 In **GitHub → Personal-Tracker → Settings → Secrets and variables → Actions**, add:
@@ -12,6 +24,8 @@ In **GitHub → Personal-Tracker → Settings → Secrets and variables → Acti
 | `TELEGRAM_CHAT_ID` | **Numeric** ID from [@userinfobot](https://t.me/userinfobot) (e.g. `67835516`) — not `@username`. Send `/start` to your bot first. |
 
 If Actions fail with `chat not found`, the chat ID is wrong or you have not messaged the bot yet.
+
+**Fix chat ID:** Actions → **Discover Telegram Chat ID** → Run workflow (send `/start` to your bot first). Set `TELEGRAM_CHAT_ID` to the numeric `id` printed in the log.
 
 ## 2. Enable GitHub Pages
 
