@@ -1,16 +1,17 @@
 [
   {
     "date": "2026-05-21",
-    "sleepTime": "00:01",
-    "wakeUpTime": "19:00",
-    "laptopDropTime": "23:00",
-    "gymTime": "",
-    "sportPlayed": "No",
-    "practicedGuitar": false,
+    "sleepTime": "12 AM",
+    "wakeUpTime": "7 AM",
+    "laptopDropTime": "After 10 PM",
+    "gymTime": "❌ No gym today",
+    "sportPlayed": "❌ No sport",
+    "practicedGuitar": true,
     "ateSweets": false,
     "fuckedMorning": true,
     "plannedTomorrow": true,
     "id": "mpezmtca3twbhww963",
-    "updatedAt": "2026-05-21T04:25:45.994Z"
+    "updatedAt": "2026-05-21T04:43:07.257Z",
+    "morningRoutine": "🛏️ Snoozed/lazy start"
   }
 ]
