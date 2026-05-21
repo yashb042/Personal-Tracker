@@ -72,12 +72,12 @@ const QUESTIONS = [
   },
   {
     key: 'morningRoutine',
-    label: 'How was your morning?',
+    label: 'Morning',
     icon: '🌅',
     type: 'chips',
     options: [
-      ['✅ Perfect morning', '📱 Opened Slack first'],
-      ['📺 Scrolled socials', '🛏️ Snoozed/lazy start'],
+      ['Perfect morning', 'Opened Slack first'],
+      ['Scrolled socials', 'Snoozed / lazy start'],
     ],
   },
   {
@@ -101,6 +101,16 @@ const EMPTY_FORM = (date) => ({
   plannedTomorrow: false,
 });
 
+function normalizeMorningValue(value) {
+  if (!value) return '';
+  const v = String(value);
+  if (/perfect/i.test(v)) return 'Perfect morning';
+  if (/slack/i.test(v)) return 'Opened Slack first';
+  if (/scroll|social/i.test(v)) return 'Scrolled socials';
+  if (/snooz|lazy|bad/i.test(v) || value === true) return 'Snoozed / lazy start';
+  return v.replace(/✅|📱|📺|🛏️/g, '').trim() || v;
+}
+
 function normalizeForm(activity) {
   if (!activity) return null;
   return {
@@ -112,7 +122,9 @@ function normalizeForm(activity) {
     sportPlayed: activity.sportPlayed || '',
     practicedGuitar: !!activity.practicedGuitar,
     ateSweets: !!activity.ateSweets,
-    morningRoutine: activity.morningRoutine || (activity.fuckedMorning ? 'Bad morning' : ''),
+    morningRoutine: normalizeMorningValue(
+      activity.morningRoutine || (activity.fuckedMorning ? 'Snoozed / lazy start' : '')
+    ),
     plannedTomorrow: !!activity.plannedTomorrow,
   };
 }
@@ -233,7 +245,12 @@ function DailyTracker() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaveStatus('saving');
-    const { cloud } = await saveActivityWithCloudSync(formData);
+    const payload = {
+      ...formData,
+      morningRoutine: normalizeMorningValue(formData.morningRoutine),
+    };
+    delete payload.fuckedMorning;
+    const { cloud } = await saveActivityWithCloudSync(payload);
     loadFromStorage();
     setSaved(true);
     setTodayExists(true);
@@ -371,11 +388,13 @@ function DailyTracker() {
                   </div>
                   <div className="popup-items">
                     {QUESTIONS.map((q) => {
+                      const raw =
+                        q.key === 'morningRoutine'
+                          ? activity.morningRoutine || (activity.fuckedMorning ? 'Snoozed / lazy start' : '')
+                          : activity[q.key];
                       const val = displayValue(
                         q.key,
-                        q.key === 'morningRoutine'
-                          ? activity.morningRoutine || (activity.fuckedMorning ? 'Bad morning' : '')
-                          : activity[q.key]
+                        q.key === 'morningRoutine' ? normalizeMorningValue(raw) : raw
                       );
                       if (!val) return null;
                       return (

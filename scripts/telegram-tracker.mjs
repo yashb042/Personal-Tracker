@@ -53,7 +53,7 @@ const TRACKING_STEPS = [
   { key: 'sportPlayed', question: '🏃 Did you play any sport today?', options: [['⚽ Football', '🏏 Cricket'], ['🏸 Badminton', '🏊 Swimming'], ['🏃 Running', 'Other sport'], ['❌ No sport']] },
   { key: 'practicedGuitar', question: '🎸 Did you practice guitar today?', options: [['✅ Yes', '❌ No']] },
   { key: 'ateSweets', question: '🍬 Did you eat sweets today?', options: [['✅ Yes', '❌ No']] },
-  { key: 'morningRoutine', question: '🌅 How did your morning go?', options: [['✅ Perfect morning', '📱 Opened Slack first'], ['📺 Scrolled socials', '🛏️ Snoozed/lazy start'], ['Other']] },
+  { key: 'morningRoutine', question: '🌅 Morning', options: [['Perfect morning', 'Opened Slack first'], ['Scrolled socials', 'Snoozed / lazy start']] },
   { key: 'plannedTomorrow', question: '📋 Did you plan stuff for tomorrow?', options: [['✅ Yes', '❌ No']] },
 ];
 

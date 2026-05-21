@@ -112,12 +112,23 @@ export function getActivities() {
   return load(STORAGE_KEYS.activities, []);
 }
 
+function normalizeMorningValue(value) {
+  if (!value) return '';
+  const v = String(value);
+  if (/perfect/i.test(v)) return 'Perfect morning';
+  if (/slack/i.test(v)) return 'Opened Slack first';
+  if (/scroll|social/i.test(v)) return 'Scrolled socials';
+  if (/snooz|lazy|bad/i.test(v) || value === true) return 'Snoozed / lazy start';
+  return v.replace(/✅|📱|📺|🛏️/g, '').trim() || v;
+}
+
 function normalizeActivity(a) {
   if (!a) return a;
   const out = { ...a };
-  if (!out.morningRoutine && out.fuckedMorning) {
-    out.morningRoutine = out.fuckedMorning ? 'Bad morning' : '';
-  }
+  out.morningRoutine = normalizeMorningValue(
+    out.morningRoutine || (out.fuckedMorning ? 'Snoozed / lazy start' : '')
+  );
+  delete out.fuckedMorning;
   return out;
 }
 
@@ -153,12 +164,15 @@ export async function syncActivitiesFromCloud() {
 export function saveActivity(data) {
   const activities = getActivities();
   const existing = activities.findIndex((a) => a.date === data.date);
+  const { fuckedMorning, ...rest } = data;
   const entry = {
     ...(existing !== -1 ? activities[existing] : {}),
-    ...data,
+    ...rest,
+    morningRoutine: normalizeMorningValue(rest.morningRoutine ?? (fuckedMorning ? 'Snoozed / lazy start' : '')),
     id: existing !== -1 ? activities[existing].id : generateId(),
     updatedAt: new Date().toISOString(),
   };
+  delete entry.fuckedMorning;
   if (existing !== -1) {
     activities[existing] = entry;
   } else {
