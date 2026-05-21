@@ -1,1 +1,16 @@
-[]
+[
+  {
+    "date": "2026-05-21",
+    "sleepTime": "00:01",
+    "wakeUpTime": "19:00",
+    "laptopDropTime": "23:00",
+    "gymTime": "",
+    "sportPlayed": "No",
+    "practicedGuitar": false,
+    "ateSweets": false,
+    "fuckedMorning": true,
+    "plannedTomorrow": true,
+    "id": "mpezmtca3twbhww963",
+    "updatedAt": "2026-05-21T04:25:45.994Z"
+  }
+]
