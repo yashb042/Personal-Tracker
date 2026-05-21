@@ -32,6 +32,9 @@ jobs:
         run: cd client && npm ci
         timeout-minutes: 5
 
+      - name: Bundle tracker data for GitHub Pages
+        run: mkdir -p client/public/data && cp data/*.json client/public/data/
+
       - name: Build frontend
         run: cd client && npm run build
         timeout-minutes: 10

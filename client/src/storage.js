@@ -1,5 +1,7 @@
-// localStorage-based storage layer — replaces the Express API backend
-// so the app can run as a fully static site (GitHub Pages, etc.)
+// Static storage for GitHub Pages + cloud sync for activities via repo JSON.
+
+const REMOTE_ACTIVITIES_URL =
+  'https://raw.githubusercontent.com/yashb042/Personal-Tracker/master/data/activities.json';
 
 const STORAGE_KEYS = {
   notes: 'pt_notes',
@@ -106,6 +108,32 @@ export function deleteLabel(id) {
 // ── Activities ────────────────────────────────────────
 export function getActivities() {
   return load(STORAGE_KEYS.activities, []);
+}
+
+/** Merge activities from GitHub (Telegram bot / Actions) into localStorage. */
+export async function syncActivitiesFromCloud() {
+  const local = getActivities();
+  try {
+    const res = await fetch(`${REMOTE_ACTIVITIES_URL}?t=${Date.now()}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return { synced: false, count: local.length };
+    const remote = await res.json();
+    if (!Array.isArray(remote)) return { synced: false, count: local.length };
+
+    const byDate = new Map(local.map((a) => [a.date, a]));
+    for (const entry of remote) {
+      const existing = byDate.get(entry.date);
+      if (!existing || new Date(entry.updatedAt || 0) >= new Date(existing.updatedAt || 0)) {
+        byDate.set(entry.date, entry);
+      }
+    }
+    const merged = [...byDate.values()].sort((a, b) => b.date.localeCompare(a.date));
+    save(STORAGE_KEYS.activities, merged);
+    return { synced: true, count: merged.length };
+  } catch {
+    return { synced: false, count: local.length };
+  }
 }
 
 export function saveActivity(data) {

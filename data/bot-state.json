@@ -1,0 +1,9 @@
+{
+  "botPollingOffset": 0,
+  "conversations": {},
+  "dailyNagState": {
+    "date": null,
+    "completed": false,
+    "nagCount": 0
+  }
+}

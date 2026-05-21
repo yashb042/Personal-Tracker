@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { getActivities, saveActivity } from '../storage';
+import { getActivities, saveActivity, syncActivitiesFromCloud } from '../storage';
 import './DailyTracker.css';
 
 function DailyTracker() {
@@ -19,6 +19,7 @@ function DailyTracker() {
   const [saved, setSaved] = useState(false);
   const [todayExists, setTodayExists] = useState(false);
   const [view, setView] = useState('today');
+  const [cloudSync, setCloudSync] = useState(null);
 
   const fieldRefs = useRef([]);
 
@@ -70,6 +71,10 @@ function DailyTracker() {
 
   useEffect(() => {
     fetchActivities();
+    syncActivitiesFromCloud().then((r) => {
+      if (r.synced) fetchActivities();
+      setCloudSync(r.synced ? 'synced' : 'offline');
+    });
   }, [fetchActivities]);
 
   // Focus first field on mount
@@ -124,6 +129,11 @@ function DailyTracker() {
     <div className="tracker-container">
       <div className="tracker-header">
         <h2>Daily Check-in</h2>
+        {cloudSync === 'synced' && (
+          <p className="prefill-hint" style={{ margin: '0 0 0.5rem' }}>
+            ☁️ Synced with cloud tracker (Telegram / GitHub)
+          </p>
+        )}
         <div className="view-toggle">
           <button
             className={`toggle-btn ${view === 'today' ? 'active' : ''}`}

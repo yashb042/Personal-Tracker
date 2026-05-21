@@ -6,5 +6,4 @@ client/build/
 *.log
 .idea/
 *.iml
-data/
 

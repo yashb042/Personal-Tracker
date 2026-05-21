@@ -67,8 +67,8 @@ function Settings() {
           <p className="settings-description">
             Configure daily reminders to help you stay on track with your goals.
           </p>
-          <p className="settings-description" style={{ color: '#f59e0b', fontSize: '0.85rem' }}>
-            ⚠️ Notifications require the backend server. This static version stores settings but cannot send notifications.
+          <p className="settings-description" style={{ color: '#22c55e', fontSize: '0.85rem' }}>
+            ✅ Telegram reminders run on GitHub Actions (24/7). Add <code>TELEGRAM_BOT_TOKEN</code> and <code>TELEGRAM_CHAT_ID</code> as repo secrets. Type <strong>log</strong> in Telegram to track.
           </p>
 
           <form onSubmit={handleSave}>
@@ -159,14 +159,14 @@ function Settings() {
         <div className="settings-card">
           <h3>ℹ️ About</h3>
           <div className="about-content">
-            <p><strong>Personal Tracker</strong> v2.0.0 — Static Edition</p>
-            <p>A personal tracking app that runs entirely in your browser. No server required.</p>
+            <p><strong>Personal Tracker</strong> v3.0.0 — GitHub Pages + Cloud</p>
+            <p>Web UI on GitHub Pages. Telegram bot & reminders via GitHub Actions (no local server).</p>
             <div className="feature-list">
-              <div className="feature-item">✅ Notes with labels</div>
-              <div className="feature-item">✅ Label organization</div>
-              <div className="feature-item">✅ Daily activity tracking</div>
-              <div className="feature-item">✅ Data export / import</div>
-              <div className="feature-item">✅ Works offline</div>
+              <div className="feature-item">✅ Notes with labels (browser)</div>
+              <div className="feature-item">✅ Daily tracking (web + Telegram)</div>
+              <div className="feature-item">✅ 8 AM IST prompt + hourly nags</div>
+              <div className="feature-item">✅ Weekly reports & motivation</div>
+              <div className="feature-item">✅ Works when laptop is off</div>
             </div>
           </div>
         </div>
