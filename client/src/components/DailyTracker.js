@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { getActivities, saveActivity, syncActivitiesFromCloud } from '../storage';
+import { getActivities, saveActivityWithCloudSync, syncActivitiesFromCloud } from '../storage';
 import './DailyTracker.css';
 
 function DailyTracker() {
@@ -20,6 +20,8 @@ function DailyTracker() {
   const [todayExists, setTodayExists] = useState(false);
   const [view, setView] = useState('today');
   const [cloudSync, setCloudSync] = useState(null);
+  const [saveStatus, setSaveStatus] = useState(null);
+  const isTelegramWebApp = typeof window !== 'undefined' && !!window.Telegram?.WebApp;
 
   const fieldRefs = useRef([]);
 
@@ -95,12 +97,24 @@ function DailyTracker() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    saveActivity(formData);
+    const { entry, cloud } = await saveActivityWithCloudSync(formData);
     setSaved(true);
     setTodayExists(true);
     fetchActivities();
+    if (isTelegramWebApp) {
+      if (cloud.ok) {
+        setSaveStatus('saved-cloud');
+        if (window.Telegram?.WebApp?.close) {
+          setTimeout(() => window.Telegram.WebApp.close(), 800);
+        }
+      } else if (cloud.reason === 'no_pat') {
+        setSaveStatus('need-pat');
+      } else {
+        setSaveStatus('cloud-failed');
+      }
+    }
     setTimeout(() => setSaved(false), 2000);
   };
 
@@ -129,9 +143,19 @@ function DailyTracker() {
     <div className="tracker-container">
       <div className="tracker-header">
         <h2>Daily Check-in</h2>
-        {cloudSync === 'synced' && (
+        {isTelegramWebApp && (
+          <p className="prefill-hint" style={{ margin: '0 0 0.5rem', color: '#22c55e' }}>
+            📱 Telegram app — save is instant when GitHub token is set in Settings.
+          </p>
+        )}
+        {saveStatus === 'need-pat' && (
+          <p className="prefill-hint" style={{ color: '#f59e0b' }}>
+            Add a GitHub token in Settings → Instant cloud sync to save from Telegram.
+          </p>
+        )}
+        {cloudSync === 'synced' && !isTelegramWebApp && (
           <p className="prefill-hint" style={{ margin: '0 0 0.5rem' }}>
-            ☁️ Synced with cloud tracker (Telegram / GitHub)
+            ☁️ Synced with cloud tracker
           </p>
         )}
         <div className="view-toggle">

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import './App.css';
 import Notes from './components/Notes';
@@ -39,6 +39,15 @@ function Navigation() {
 }
 
 function App() {
+  useEffect(() => {
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      document.documentElement.classList.add('telegram-webapp');
+    }
+  }, []);
+
   return (
     <Router>
       <div className="App">

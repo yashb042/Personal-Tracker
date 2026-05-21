@@ -197,8 +197,20 @@ async function tgPost(method, body) {
   return data;
 }
 
+function trackerWebAppMarkup() {
+  return {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '📱 Open Tracker (instant)', web_app: { url: PAGES_URL } }],
+      ],
+    },
+  };
+}
+
 async function sendMessage(chatId, text, extra = {}) {
-  await tgPost('sendMessage', { chat_id: chatId, text, parse_mode: 'Markdown', ...extra });
+  const body = { chat_id: chatId, text, ...extra };
+  if (!extra.reply_markup) body.parse_mode = 'Markdown';
+  await tgPost('sendMessage', body);
 }
 
 async function answerCallback(callbackQueryId) {
@@ -242,18 +254,13 @@ async function sendStep(chatId, stepIndex) {
   await sendMessage(chatId, step.question, buildInlineKeyboard(stepIndex, step.options));
 }
 
-async function startTracking(chatId) {
+async function sendInstantLogPrompt(chatId) {
   const date = todayDateIST();
-  state.conversations[String(chatId)] = { step: 0, answers: {}, date };
-  persistState();
-  const intro =
-    `${currentThemeLine()}\n\n` +
-    `📋 *Daily Tracker — ${formatDateNice(date)}*\n\n` +
-    `Let's go through your day, one question at a time.\n\n` +
-    `🌐 Web: ${PAGES_URL}`;
-  await sendMessage(chatId, intro);
-  await new Promise((r) => setTimeout(r, 400));
-  await sendStep(chatId, 0);
+  await sendMessage(
+    chatId,
+    `${currentThemeLine()}\n\n📋 *Daily Tracker — ${formatDateNice(date)}*\n\nTap below to log instantly (opens in Telegram, no wait):`,
+    trackerWebAppMarkup()
+  );
 }
 
 async function processAnswer(chatId, answerText) {
@@ -344,19 +351,19 @@ async function handleBotMessage(msg) {
   if (text === '/start') {
     await sendMessage(
       chatId,
-      '👋 Hey! I\'m your *Personal Tracker Bot* (cloud edition).\n\n' +
-        '• *log* — Log today\'s activities\n' +
-        '• *history* — View last 7 days\n' +
-        '• *week* — This week\'s gym/sport stats\n' +
-        '• *cancel* — Cancel current tracking\n\n' +
-        `🌐 Web tracker: ${PAGES_URL}\n\n` +
-        '⏰ Daily 8 AM IST prompt + hourly nags until you log (runs on GitHub, not your laptop).'
+      '👋 *Personal Tracker* (GitHub cloud)\n\n' +
+        '• Tap *Open Tracker* below — instant form in Telegram\n' +
+        '• *history* — last 7 days\n' +
+        '• *week* — gym/sport stats\n\n' +
+        'Reminders run on GitHub Actions. Your laptop can be off.\n' +
+        'One-time: add a GitHub token in the app Settings for instant save.',
+      trackerWebAppMarkup()
     );
     return;
   }
 
   if (textLower === 'log' || text === '/track') {
-    await startTracking(chatId);
+    await sendInstantLogPrompt(chatId);
     return;
   }
 
@@ -423,7 +430,8 @@ async function handleCallbackQuery(query) {
   if (!state.conversations[key]) {
     await sendMessage(
       chatId,
-      '⏳ That prompt expired (cloud bot syncs every ~2 min). Type *log* to start again, or wait a moment and tap again.'
+      'Use *Open Tracker* for instant logging. Type *log* to get the button again.',
+      trackerWebAppMarkup()
     );
     return;
   }
@@ -431,9 +439,9 @@ async function handleCallbackQuery(query) {
 }
 
 // ── Scheduled jobs ────────────────────────────────────
-async function sendTelegramToUser(message) {
+async function sendTelegramToUser(message, extra = {}) {
   if (!CHAT_ID) return;
-  await sendMessage(parseInt(CHAT_ID, 10), message);
+  await sendMessage(parseInt(CHAT_ID, 10), message, extra);
 }
 
 async function sendSundayReport() {
@@ -493,7 +501,10 @@ async function runDailyPrompt() {
   const today = todayDateIST();
   state.dailyNagState = { date: today, completed: false, nagCount: 1 };
   persistState();
-  await startTracking(parseInt(CHAT_ID, 10));
+  await sendTelegramToUser(
+    `${currentThemeLine()}\n\n📋 *Daily Tracker — ${formatDateNice(today)}*\n\nTap to log (instant):`,
+    trackerWebAppMarkup()
+  );
 }
 
 async function runHourlyNag() {
@@ -502,15 +513,17 @@ async function runHourlyNag() {
   persistState();
   const hour = state.dailyNagState.nagCount;
   const nagMessages = [
-    `⏰ Reminder #${hour}: Log your day. Type *log* or tap through the buttons above.`,
-    `👀 Still waiting on today's log...`,
-    `${currentThemeLine()}\n\nYou haven't logged today. Type *log*.`,
-    `🔔 Hey. The tracker is waiting. Type *log*.`,
-    `💀 ${hour} reminders in. Log. Your. Day.`,
-    `📋 ${PAGES_URL}\n\nType *log* here or use the web form.`,
-    `${getRandomMotivation()}\n\n...and log your day. Type *log*.`,
+    `⏰ Reminder #${hour}: Log your day — tap *Open Tracker* below.`,
+    `👀 Still waiting on today's log. Tap below.`,
+    `${currentThemeLine()}\n\nYou haven't logged today.`,
+    `🔔 Quick log — tap below.`,
+    `💀 ${hour} reminders in. Log your day now.`,
+    `${getRandomMotivation()}\n\nLog your day — tap below.`,
   ];
-  await sendTelegramToUser(nagMessages[Math.floor(Math.random() * nagMessages.length)]);
+  await sendTelegramToUser(
+    nagMessages[Math.floor(Math.random() * nagMessages.length)],
+    trackerWebAppMarkup()
+  );
 }
 
 async function pollBotOnce(timeout = 0) {
@@ -571,12 +584,10 @@ async function main() {
       break;
     case 'daily-prompt':
       await runDailyPrompt();
-      await pollBurst();
       console.log('Daily 8 AM prompt sent');
       break;
     case 'hourly-nag':
       await runHourlyNag();
-      await pollBurst();
       console.log('Hourly nag sent (if needed)');
       break;
     case 'midweek':

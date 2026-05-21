@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getNotificationSettings, saveNotificationSettings, exportAllData, importAllData } from '../storage';
+import { getGithubPat, setGithubPat } from '../githubSync';
 import './Settings.css';
 
 function Settings() {
@@ -11,9 +12,11 @@ function Settings() {
   });
   const [loading, setLoading] = useState(false);
   const [importStatus, setImportStatus] = useState(null);
+  const [githubPat, setGithubPatState] = useState('');
 
   useEffect(() => {
     setSettings(getNotificationSettings());
+    setGithubPatState(getGithubPat());
   }, []);
 
   const handleSave = (e) => {
@@ -68,7 +71,7 @@ function Settings() {
             Configure daily reminders to help you stay on track with your goals.
           </p>
           <p className="settings-description" style={{ color: '#22c55e', fontSize: '0.85rem' }}>
-            ✅ Telegram reminders run on GitHub Actions (24/7). Add <code>TELEGRAM_BOT_TOKEN</code> and <code>TELEGRAM_CHAT_ID</code> as repo secrets. Type <strong>log</strong> in Telegram to track.
+            ✅ Reminders run on GitHub Actions (laptop off). Tap <strong>Open Tracker</strong> in Telegram for instant logging.
           </p>
 
           <form onSubmit={handleSave}>
@@ -129,6 +132,37 @@ function Settings() {
         </div>
 
         <div className="settings-card">
+          <h3>🔑 Instant save from Telegram (required once)</h3>
+          <p className="settings-description">
+            Create a <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noreferrer">fine-grained GitHub token</a> with
+            <strong> Contents: Read and write</strong> on repo <code>Personal-Tracker</code> only.
+            Stored in this browser only — enables instant save when you use the Telegram Web App.
+          </p>
+          <div className="input-group">
+            <label>GitHub token</label>
+            <input
+              type="password"
+              value={githubPat}
+              onChange={(e) => setGithubPatState(e.target.value)}
+              placeholder="github_pat_..."
+              autoComplete="off"
+            />
+          </div>
+          <div className="button-group">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                setGithubPat(githubPat);
+                alert('GitHub token saved in this browser.');
+              }}
+            >
+              Save token
+            </button>
+          </div>
+        </div>
+
+        <div className="settings-card">
           <h3>💾 Data Backup</h3>
           <p className="settings-description">
             Your data is stored in this browser's localStorage. Export it to keep a backup or transfer to another device.
@@ -159,14 +193,13 @@ function Settings() {
         <div className="settings-card">
           <h3>ℹ️ About</h3>
           <div className="about-content">
-            <p><strong>Personal Tracker</strong> v3.0.0 — GitHub Pages + Cloud</p>
-            <p>Web UI on GitHub Pages. Telegram bot & reminders via GitHub Actions (no local server).</p>
+            <p><strong>Personal Tracker</strong> v4.0.0 — GitHub only</p>
+            <p>Reminders via GitHub Actions. Instant logging via Telegram Web App on GitHub Pages.</p>
             <div className="feature-list">
-              <div className="feature-item">✅ Notes with labels (browser)</div>
-              <div className="feature-item">✅ Daily tracking (web + Telegram)</div>
-              <div className="feature-item">✅ 8 AM IST prompt + hourly nags</div>
-              <div className="feature-item">✅ Weekly reports & motivation</div>
-              <div className="feature-item">✅ Works when laptop is off</div>
+              <div className="feature-item">✅ Open Tracker in Telegram (instant)</div>
+              <div className="feature-item">✅ Laptop can be off</div>
+              <div className="feature-item">✅ 8 AM + hourly reminders</div>
+              <div className="feature-item">✅ GitHub token → instant cloud save</div>
             </div>
           </div>
         </div>

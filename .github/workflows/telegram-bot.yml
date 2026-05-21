@@ -1,40 +1,17 @@
-name: Telegram Bot Poll
+# Disabled: GitHub cannot process Telegram button taps instantly (5+ min poll delay).
+# Use the Telegram Web App button in reminders instead — instant, runs on GitHub Pages.
+name: Telegram Bot Poll (disabled)
 
-# Poll Telegram every 5 minutes (GitHub minimum). Replaces local server.js bot polling.
 on:
-  schedule:
-    # GitHub minimum 5 min — stagger 3 workflows ≈ every ~2 min
-    - cron: '*/5 * * * *'
-    - cron: '2-59/5 * * * *'
-    - cron: '4-59/5 * * * *'
   workflow_dispatch:
 
 permissions:
-  contents: write
-
-concurrency:
-  group: tracker-telegram-data
-  cancel-in-progress: false
+  contents: read
 
 jobs:
-  poll:
+  info:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Poll Telegram & process messages
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          PAGES_URL: https://yashb042.github.io/Personal-Tracker/
-        run: node scripts/telegram-tracker.mjs poll-burst
-
-      - name: Commit data changes
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: 'chore: sync tracker data from Telegram bot'
-          file_pattern: 'data/*.json'
+      - run: |
+          echo "This workflow is intentionally disabled."
+          echo "Log via the Open Tracker Web App button in Telegram reminders."

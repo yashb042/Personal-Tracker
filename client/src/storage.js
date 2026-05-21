@@ -1,4 +1,6 @@
-// Static storage for GitHub Pages + cloud sync for activities via repo JSON.
+// Static storage for GitHub Pages + optional instant GitHub API sync (Telegram Web App).
+
+import { pushActivitiesToGithub } from './githubSync';
 
 const REMOTE_ACTIVITIES_URL =
   'https://raw.githubusercontent.com/yashb042/Personal-Tracker/master/data/activities.json';
@@ -152,6 +154,14 @@ export function saveActivity(data) {
   }
   save(STORAGE_KEYS.activities, activities);
   return entry;
+}
+
+/** Save locally then push to GitHub immediately (for Telegram Web App). */
+export async function saveActivityWithCloudSync(data) {
+  const entry = saveActivity(data);
+  const activities = getActivities();
+  const cloud = await pushActivitiesToGithub(activities);
+  return { entry, cloud };
 }
 
 // ── Notification Settings ─────────────────────────────

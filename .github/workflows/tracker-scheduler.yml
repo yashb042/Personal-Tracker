@@ -64,13 +64,6 @@ jobs:
           PAGES_URL: https://yashb042.github.io/Personal-Tracker/
         run: node scripts/telegram-tracker.mjs ${{ steps.job.outputs.name }}
 
-      - name: Process pending Telegram taps (buttons)
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          PAGES_URL: https://yashb042.github.io/Personal-Tracker/
-        run: node scripts/telegram-tracker.mjs poll-burst
-
       - name: Commit data changes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
