@@ -9,7 +9,9 @@ In **GitHub → Personal-Tracker → Settings → Secrets and variables → Acti
 | Secret | Value |
 |--------|--------|
 | `TELEGRAM_BOT_TOKEN` | From [@BotFather](https://t.me/BotFather) |
-| `TELEGRAM_CHAT_ID` | From [@userinfobot](https://t.me/userinfobot) |
+| `TELEGRAM_CHAT_ID` | **Numeric** ID from [@userinfobot](https://t.me/userinfobot) (e.g. `67835516`) — not `@username`. Send `/start` to your bot first. |
+
+If Actions fail with `chat not found`, the chat ID is wrong or you have not messaged the bot yet.
 
 ## 2. Enable GitHub Pages
 
