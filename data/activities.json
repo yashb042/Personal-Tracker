@@ -4,8 +4,8 @@
     "sleepTime": "12 AM",
     "wakeUpTime": "7 AM",
     "laptopDropTime": "11 PM",
-    "gymTime": "ÃÂ¢ÃÂÃÂ No gym today",
-    "sportPlayed": "ÃÂ¢ÃÂÃÂ No sport",
+    "gymTime": "ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ No gym today",
+    "sportPlayed": "ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ No sport",
     "practicedGuitar": true,
     "ateSweets": true,
     "plannedTomorrow": true,
@@ -18,13 +18,13 @@
     "sleepTime": "12:30 AM",
     "wakeUpTime": "7:30 AM",
     "laptopDropTime": "12 AM",
-    "gymTime": "❌ No gym today",
-    "sportPlayed": "❌ No sport",
+    "gymTime": "â No gym today",
+    "sportPlayed": "â No sport",
     "practicedGuitar": true,
     "ateSweets": false,
     "morningRoutine": "Opened Slack first",
     "plannedTomorrow": true,
     "id": "mpgbm5q9ibx1791enta",
-    "updatedAt": "2026-05-22T02:48:56.961Z"
+    "updatedAt": "2026-05-22T02:49:48.074Z"
   }
 ]
