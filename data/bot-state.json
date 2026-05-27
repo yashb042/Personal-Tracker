@@ -11,7 +11,7 @@
   },
   "dailyNagState": {
     "date": "2026-05-27",
-    "completed": false,
-    "nagCount": 2
+    "completed": true,
+    "nagCount": 0
   }
 }
