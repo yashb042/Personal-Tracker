@@ -10,8 +10,8 @@
     }
   },
   "dailyNagState": {
-    "date": "2026-06-12",
-    "completed": true,
-    "nagCount": 0
+    "date": "2026-06-13",
+    "completed": false,
+    "nagCount": 1
   }
 }
