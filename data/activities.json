@@ -278,5 +278,19 @@
     "plannedTomorrow": false,
     "id": "mrjgu2qn8tu3m7y3b2f",
     "updatedAt": "2026-07-13T16:57:47.615Z"
+  },
+  {
+    "date": "2026-07-14",
+    "sleepTime": "12 AM",
+    "wakeUpTime": "7 AM",
+    "laptopDropTime": "11 PM",
+    "gymTime": "7 PM",
+    "sportPlayed": "❌ No sport",
+    "practicedGuitar": true,
+    "ateSweets": true,
+    "morningRoutine": "Perfect morning",
+    "plannedTomorrow": false,
+    "id": "mrknsic3tguiuvt4q29",
+    "updatedAt": "2026-07-14T13:00:18.003Z"
   }
 ]
