@@ -292,5 +292,19 @@
     "plannedTomorrow": false,
     "id": "mrknsic3tguiuvt4q29",
     "updatedAt": "2026-07-14T13:00:18.003Z"
+  },
+  {
+    "date": "2026-07-17",
+    "sleepTime": "12:30 AM",
+    "wakeUpTime": "7:30 AM",
+    "laptopDropTime": "11:30 PM",
+    "gymTime": "❌ No gym today",
+    "sportPlayed": "❌ No sport",
+    "practicedGuitar": true,
+    "ateSweets": true,
+    "morningRoutine": "Opened Slack first",
+    "plannedTomorrow": true,
+    "id": "mroirkgl3qq61qpm2vx",
+    "updatedAt": "2026-07-17T05:50:40.725Z"
   }
 ]
