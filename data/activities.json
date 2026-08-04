@@ -334,5 +334,19 @@
     "plannedTomorrow": true,
     "id": "msddf8e8ldt7pnzt7i",
     "updatedAt": "2026-08-03T15:15:21.536Z"
+  },
+  {
+    "date": "2026-08-04",
+    "sleepTime": "After 1 AM",
+    "wakeUpTime": "8:30 AM",
+    "laptopDropTime": "11 PM",
+    "gymTime": "❌ No gym today",
+    "sportPlayed": "❌ No sport",
+    "practicedGuitar": true,
+    "ateSweets": true,
+    "morningRoutine": "Opened Slack first",
+    "plannedTomorrow": false,
+    "id": "msetkaemg1hpq43d9k",
+    "updatedAt": "2026-08-04T15:34:57.454Z"
   }
 ]
