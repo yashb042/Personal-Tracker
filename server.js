@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const cron = require('node-cron');
 const axios = require('axios');
+const { defaultActivity, gymOrSportsValue } = require('./client/src/activityFields');
 require('dotenv').config();
 
 const app = express();
@@ -21,6 +22,7 @@ const DATA_DIR = path.join(__dirname, 'data');
 const NOTES_FILE = path.join(DATA_DIR, 'notes.json');
 const LABELS_FILE = path.join(DATA_DIR, 'labels.json');
 const ACTIVITIES_FILE = path.join(DATA_DIR, 'activities.json');
+const BOT_STATE_FILE = path.join(DATA_DIR, 'bot-state.json');
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -155,35 +157,25 @@ app.delete('/api/labels/:id', (req, res) => {
 app.get('/api/activities', (req, res) => res.json(dailyActivities));
 
 app.post('/api/activities', (req, res) => {
-  const {
-    date, sleepTime, wakeUpTime, laptopDropTime, gymTime, sportPlayed,
-    practicedGuitar, ateSweets, morningRoutine, plannedTomorrow,
-  } = req.body;
-
+  const { date } = req.body;
   const i = dailyActivities.findIndex(a => a.date === date);
+  const existing = dailyActivities[i];
+  const fields = ['kegel', 'sleepTime', 'wakeUpTime', 'laptopDropTime', 'gymOrSports',
+    'practicedGuitar', 'plannedTomorrow', 'gymTime', 'sportPlayed', 'ateSweets', 'morningRoutine'];
+  const answers = Object.fromEntries(
+    fields.filter(key => Object.hasOwn(req.body, key)).map(key => [key, req.body[key]])
+  );
   const activity = {
-    id: i !== -1 ? dailyActivities[i].id : generateId(),
+    ...existing,
+    ...answers,
+    id: existing?.id ?? generateId(),
     date,
-    sleepTime: sleepTime || '',
-    wakeUpTime: wakeUpTime || '',
-    laptopDropTime: laptopDropTime || '',
-    gymTime: gymTime || '',
-    sportPlayed: sportPlayed || '',
-    practicedGuitar: practicedGuitar || false,
-    ateSweets: ateSweets || false,
-    morningRoutine: morningRoutine || '',
-    plannedTomorrow: plannedTomorrow || false,
-    createdAt: i !== -1 ? dailyActivities[i].createdAt : new Date().toISOString(),
+    createdAt: existing?.createdAt ?? new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
   if (i !== -1) dailyActivities[i] = activity;
   else dailyActivities.push(activity);
   saveFile(ACTIVITIES_FILE, dailyActivities);
-
-  // Stop hourly nagging if today's entry was submitted
-  if (typeof markNagComplete === 'function' && date === todayDateIST()) {
-    markNagComplete();
-  }
 
   res.status(201).json(activity);
 });
@@ -236,55 +228,6 @@ function currentThemeLine() {
 // =============================================
 // MOTIVATIONAL POOL — 30+ unique messages
 // =============================================
-const MOTIVATIONAL_POOL = [
-  // Harsh
-  "You paid for that gym membership. Use it or lose it.",
-  "Excuses don't burn calories. Move.",
-  "Skipping today is stealing from tomorrow's you.",
-  "Comfort is a slow death. Get up.",
-  "You don't get the body of someone who 'didn't feel like it'.",
-  "Stop scrolling. Start sweating.",
-  "Soft choices today, soft body tomorrow.",
-  // Funny
-  "Your muscles are filing a missing person report.",
-  "Your dumbbells are gathering dust and judging you.",
-  "Even your couch is asking for a day off from you.",
-  "Your gym shoes haven't seen sunlight in days. Sad.",
-  "Your protein shake is single and looking for a workout.",
-  "Plot twist: the gym actually exists when you go.",
-  // Stats / time
-  () => `You have ${daysUntilTarget()} days till July 31. That's ${Math.floor(daysUntilTarget() * 4 / 7)} more gym sessions if you go 4x/week. Don't waste them.`,
-  () => `${daysUntilTarget()} days left. Each one you skip is a rep your future self has to do twice.`,
-  () => `If you skip today, you've used ${(((daysUntilTarget()) / 365) * 100).toFixed(0)}% less of your runway than yesterday.`,
-  "30 minutes. That's it. You spend more time on Instagram.",
-  // Philosophical
-  "Discipline is choosing between what you want now and what you want most.",
-  "You don't rise to the level of your goals. You fall to the level of your systems.",
-  "The pain of discipline weighs ounces. The pain of regret weighs tons.",
-  "Motivation gets you started. Habit keeps you going.",
-  "What you do today echoes through your next decade.",
-  // Competitive
-  "Someone out there is training while you're on the couch. Catch up.",
-  "Your competition just finished their second set. What about you?",
-  "Every day you skip, someone else is gaining ground.",
-  "There's a version of you out there who didn't quit. Be him.",
-  // Identity
-  "You are what you repeatedly do. Right now, what are you?",
-  "Show up enough times and 'I'm a guy who trains' becomes true.",
-  "Champions show up on the days they don't feel like it. That's literally the difference.",
-  // Brutal honesty
-  "You said this year would be different. It's halfway over. Prove it.",
-  "Nobody's going to do this for you. Get up.",
-  "You're not tired. You're undisciplined. There's a difference.",
-  "The gym doesn't care about your mood. Go anyway.",
-  "Pretty soon 'one day' becomes 'never'.",
-];
-
-function getRandomMotivation() {
-  const item = MOTIVATIONAL_POOL[Math.floor(Math.random() * MOTIVATIONAL_POOL.length)];
-  return typeof item === 'function' ? item() : item;
-}
-
 // =============================================
 // TELEGRAM
 // =============================================
@@ -331,6 +274,7 @@ app.get('*', (req, res) => {
 // =============================================
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+const LOCAL_REMINDERS_ENABLED = process.env.TRACKER_LOCAL_REMINDERS === 'true';
 const BOT_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 let botPollingOffset = 0;
 
@@ -338,9 +282,13 @@ const conversations = new Map();
 
 const TRACKING_STEPS = [
   {
+    key: 'kegel',
+    question: '🔁 Did you do Kegels?',
+    options: [['Once', 'Twice', 'No']],
+  },
+  {
     key: 'sleepTime',
     question: '🛏️ What time did you sleep last night?',
-    type: 'buttons',
     options: [
       ['9 PM', '9:30 PM', '10 PM'],
       ['10:30 PM', '11 PM', '11:30 PM'],
@@ -351,7 +299,6 @@ const TRACKING_STEPS = [
   {
     key: 'wakeUpTime',
     question: '⏰ What time did you wake up today?',
-    type: 'buttons',
     options: [
       ['5 AM', '5:30 AM', '6 AM'],
       ['6:30 AM', '7 AM', '7:30 AM'],
@@ -362,7 +309,6 @@ const TRACKING_STEPS = [
   {
     key: 'laptopDropTime',
     question: '💻 What time did you stop working / close your laptop?',
-    type: 'buttons',
     options: [
       ['5 PM', '5:30 PM', '6 PM'],
       ['6:30 PM', '7 PM', '7:30 PM'],
@@ -371,58 +317,23 @@ const TRACKING_STEPS = [
     ],
   },
   {
-    key: 'gymTime',
-    question: '🏋️ Did you go to the gym? If yes, what time?',
-    type: 'buttons',
-    options: [
-      ['6 AM', '7 AM', '8 AM'],
-      ['5 PM', '6 PM', '7 PM'],
-      ['Other time'],
-      ['❌ No gym today'],
-    ],
-  },
-  {
-    key: 'sportPlayed',
-    question: '🏃 Did you play any sport today?',
-    type: 'buttons',
-    options: [
-      ['⚽ Football', '🏏 Cricket'],
-      ['🏸 Badminton', '🏊 Swimming'],
-      ['🏃 Running', 'Other sport'],
-      ['❌ No sport'],
-    ],
+    key: 'gymOrSports',
+    question: '🏋️ Gym or sports today?',
+    options: [['✅ Yes', '❌ No']],
   },
   {
     key: 'practicedGuitar',
     question: '🎸 Did you practice guitar today?',
-    type: 'buttons',
     options: [['✅ Yes', '❌ No']],
-  },
-  {
-    key: 'ateSweets',
-    question: '🍬 Did you eat sweets today?',
-    type: 'buttons',
-    options: [['✅ Yes', '❌ No']],
-  },
-  {
-    key: 'morningRoutine',
-    question: '🌅 How did your morning go?',
-    type: 'buttons',
-    options: [
-      ['✅ Perfect morning', '📱 Opened Slack first'],
-      ['📺 Scrolled socials', '🛏️ Snoozed/lazy start'],
-      ['Other'],
-    ],
   },
   {
     key: 'plannedTomorrow',
     question: '📋 Did you plan stuff for tomorrow?',
-    type: 'buttons',
     options: [['✅ Yes', '❌ No']],
   },
 ];
 
-const BOOLEAN_KEYS = new Set(['practicedGuitar', 'plannedTomorrow', 'ateSweets']);
+const BOOLEAN_KEYS = new Set(['gymOrSports', 'practicedGuitar', 'plannedTomorrow']);
 
 async function botSend(chatId, text, extra = {}) {
   try {
@@ -452,36 +363,32 @@ function todayDateIST() {
 
 function formatDateNice(dateStr) {
   const d = new Date(dateStr + 'T00:00:00+05:30');
-  return d.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  return d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
-function buildInlineKeyboard(options) {
-  return {
-    reply_markup: JSON.stringify({
-      inline_keyboard: options.map(row => row.map(text => ({ text, callback_data: `track_${text}` }))),
-    }),
-  };
-}
-
-async function sendStep(chatId, stepIndex) {
+async function sendStep(chatId, stepIndex, answers) {
   const step = TRACKING_STEPS[stepIndex];
-  if (step.type === 'buttons') {
-    await botSend(chatId, step.question, buildInlineKeyboard(step.options));
-  } else {
-    await botSend(chatId, step.question);
-  }
+  const selected = typeof answers[step.key] === 'boolean'
+    ? answers[step.key] ? '✅ Yes' : '❌ No'
+    : answers[step.key];
+  const inline_keyboard = step.options.map(row => row.map(option => ({
+    text: option === selected && step.key !== 'plannedTomorrow' ? `${option} (default)` : option,
+    callback_data: `track:${stepIndex}:${option}`,
+  })));
+  await botSend(chatId, step.question, { reply_markup: JSON.stringify({ inline_keyboard }) });
 }
 
 async function startTracking(chatId) {
   const date = todayDateIST();
-  conversations.set(chatId, { step: 0, answers: {}, date });
+  const answers = defaultActivity(date);
+  conversations.set(chatId, { step: 0, answers, date });
   const intro =
     `${currentThemeLine()}\n\n` +
     `📋 *Daily Tracker — ${formatDateNice(date)}*\n\n` +
     `Let's go through your day, one question at a time.`;
   await botSend(chatId, intro);
   await new Promise(r => setTimeout(r, 500));
-  await sendStep(chatId, 0);
+  await sendStep(chatId, 0, answers);
 }
 
 // =============================================
@@ -501,7 +408,7 @@ function startOfWeekIST() {
 
 function currentWeekDates() {
   const monStr = startOfWeekIST();
-  const monDate = new Date(monStr + 'T00:00:00+05:30');
+  const monDate = new Date(monStr + 'T00:00:00Z');
   const out = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(monDate.getTime() + i * 24 * 60 * 60 * 1000);
@@ -513,16 +420,13 @@ function currentWeekDates() {
 function weekStats() {
   const weekSet = new Set(currentWeekDates());
   const week = dailyActivities.filter(a => weekSet.has(a.date));
-  const gymDays = week.filter(a => a.gymTime && !/no/i.test(a.gymTime)).length;
-  const sportDays = week.filter(a => a.sportPlayed && !/^❌|^no/i.test(a.sportPlayed)).length;
-  return { gymDays, sportDays, weekCount: week.length };
+  return week.filter(gymOrSportsValue).length;
 }
 
 function weekProgressLine() {
-  const { gymDays, sportDays } = weekStats();
-  const gymStatus = gymDays >= 4 ? '✅' : gymDays >= 2 ? '⚠️' : '💀';
-  const sportStatus = sportDays >= 2 ? '✅' : sportDays >= 1 ? '⚠️' : '💀';
-  return `This week: ${gymDays}/4 gym days ${gymStatus} | ${sportDays}/2 sport days ${sportStatus}`;
+  const activeDays = weekStats();
+  const status = activeDays >= 4 ? '✅' : activeDays >= 2 ? '⚠️' : '💀';
+  return `This week: ${activeDays}/4 gym or sports days ${status}`;
 }
 
 async function processAnswer(chatId, answerText) {
@@ -531,36 +435,23 @@ async function processAnswer(chatId, answerText) {
 
   const currentStep = TRACKING_STEPS[convo.step];
 
-  // Handle "Other" follow-up for morningRoutine
-  if (convo.awaitingFreeText === 'morningRoutine') {
-    convo.answers.morningRoutine = answerText;
-    convo.awaitingFreeText = null;
-    convo.step++;
-    if (convo.step < TRACKING_STEPS.length) {
-      await sendStep(chatId, convo.step);
+  const { key } = currentStep;
+  if (BOOLEAN_KEYS.has(key)) {
+    convo.answers[key] = /yes|✅/i.test(answerText);
+  } else if (key === 'kegel') {
+    const option = currentStep.options.flat().find(value => value.toLowerCase() === answerText.toLowerCase());
+    if (!option) {
+      await sendStep(chatId, convo.step, convo.answers);
       return;
     }
-    // fall through to save
-  } else if (currentStep.key === 'morningRoutine' && /other/i.test(answerText)) {
-    convo.awaitingFreeText = 'morningRoutine';
-    await botSend(chatId, '✍️ Type what you did this morning:');
-    return;
-  } else if (BOOLEAN_KEYS.has(currentStep.key)) {
-    convo.answers[currentStep.key] = /yes|✅/i.test(answerText);
-    convo.step++;
-  } else if (currentStep.key === 'gymTime' && /no|❌/i.test(answerText)) {
-    convo.answers[currentStep.key] = 'No';
-    convo.step++;
-  } else if (currentStep.key === 'sportPlayed' && /no|❌/i.test(answerText)) {
-    convo.answers[currentStep.key] = 'No';
-    convo.step++;
+    convo.answers[key] = option;
   } else {
-    convo.answers[currentStep.key] = answerText;
-    convo.step++;
+    convo.answers[key] = answerText;
   }
+  convo.step++;
 
   if (convo.step < TRACKING_STEPS.length) {
-    await sendStep(chatId, convo.step);
+    await sendStep(chatId, convo.step, convo.answers);
     return;
   }
 
@@ -568,17 +459,9 @@ async function processAnswer(chatId, answerText) {
   const existing = i !== -1 ? dailyActivities[i] : null;
 
   const saved = {
+    ...existing,
+    ...convo.answers,
     id: existing ? existing.id : generateId(),
-    date: convo.date,
-    sleepTime: convo.answers.sleepTime || '',
-    wakeUpTime: convo.answers.wakeUpTime || '',
-    laptopDropTime: convo.answers.laptopDropTime || '',
-    gymTime: convo.answers.gymTime || '',
-    sportPlayed: convo.answers.sportPlayed || '',
-    practicedGuitar: convo.answers.practicedGuitar || false,
-    ateSweets: convo.answers.ateSweets || false,
-    morningRoutine: convo.answers.morningRoutine || '',
-    plannedTomorrow: convo.answers.plannedTomorrow || false,
     createdAt: existing ? existing.createdAt : new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -587,30 +470,22 @@ async function processAnswer(chatId, answerText) {
   saveFile(ACTIVITIES_FILE, dailyActivities);
 
   const guitar = saved.practicedGuitar ? '✅ Yes' : '❌ No';
-  const sweets = saved.ateSweets ? '✅ Yes' : '❌ No';
-  const morning = saved.morningRoutine || '-';
   const planned = saved.plannedTomorrow ? '✅ Yes' : '❌ No';
-  const sport = saved.sportPlayed && saved.sportPlayed !== 'No' ? saved.sportPlayed : '❌ No';
 
   const summary =
     `✅ *Activity saved for ${formatDateNice(saved.date)}!*\n\n` +
+    `🔁 Kegels: ${saved.kegel}\n` +
     `🛏️ Sleep: ${saved.sleepTime}\n` +
     `⏰ Wake up: ${saved.wakeUpTime}\n` +
     `💻 Laptop drop: ${saved.laptopDropTime}\n` +
-    `🏋️ Gym: ${saved.gymTime}\n` +
-    `🏃 Sport: ${sport}\n` +
+    `🏋️ Gym or sports: ${saved.gymOrSports ? '✅ Yes' : '❌ No'}\n` +
     `🎸 Guitar: ${guitar}\n` +
-    `🍬 Sweets: ${sweets}\n` +
-    `🌅 Morning: ${morning}\n` +
     `📋 Planned tomorrow: ${planned}\n\n` +
     `📊 ${weekProgressLine()}\n\n` +
     `Type *history* to view past entries.`;
 
   await botSend(chatId, summary);
   conversations.delete(chatId);
-
-  // Stop hourly nagging — today is logged
-  markNagComplete();
 }
 
 async function handleBotMessage(msg) {
@@ -624,9 +499,9 @@ async function handleBotMessage(msg) {
       'Just type:\n' +
       '• *log* — Log today\'s activities\n' +
       '• *history* — View last 7 days\n' +
-      '• *week* — This week\'s gym/sport stats\n' +
+      '• *week* — This week\'s gym or sports stats\n' +
       '• *cancel* — Cancel current tracking\n\n' +
-      'I\'ll ping you every day at 8 AM IST to log (and keep nagging hourly till you do).'
+      (LOCAL_REMINDERS_ENABLED ? 'I’ll send one reminder at 8 AM IST each day.' : '')
     );
     return;
   }
@@ -649,20 +524,16 @@ async function handleBotMessage(msg) {
     }
     let historyMsg = '📊 *Last 7 days:*\n';
     for (const a of sorted) {
+      const active = gymOrSportsValue(a);
       const guitar = a.practicedGuitar ? '✅' : '❌';
-      const sweets = a.ateSweets ? '✅' : '❌';
-      const morning = a.morningRoutine || '-';
       const planned = a.plannedTomorrow ? '✅' : '❌';
-      const sport = a.sportPlayed && a.sportPlayed !== 'No' ? a.sportPlayed : '❌';
       historyMsg += `\n📅 *${formatDateNice(a.date)}*\n`;
+      historyMsg += `  🔁 Kegels: ${a.kegel || '-'}\n`;
       historyMsg += `  🛏️ Sleep: ${a.sleepTime || '-'}\n`;
       historyMsg += `  ⏰ Wake: ${a.wakeUpTime || '-'}\n`;
       historyMsg += `  💻 Laptop: ${a.laptopDropTime || '-'}\n`;
-      historyMsg += `  🏋️ Gym: ${a.gymTime || '-'}\n`;
-      historyMsg += `  🏃 Sport: ${sport}\n`;
+      historyMsg += `  🏋️ Gym or sports: ${active === undefined ? '–' : active ? 'Yes' : 'No'}\n`;
       historyMsg += `  🎸 Guitar: ${guitar}\n`;
-      historyMsg += `  🍬 Sweets: ${sweets}\n`;
-      historyMsg += `  🌅 Morning: ${morning}\n`;
       historyMsg += `  📋 Planned: ${planned}\n`;
     }
     historyMsg += `\n${weekProgressLine()}`;
@@ -690,11 +561,11 @@ async function handleBotMessage(msg) {
 
 async function handleCallbackQuery(query) {
   const chatId = query.message.chat.id;
-  const data = (query.data || '').replace(/^track_/, '');
+  const answer = (query.data || '').match(/^track:(\d+):(.+)$/);
   await answerCallback(query.id);
   const convo = conversations.get(chatId);
-  if (!convo) return;
-  await processAnswer(chatId, data);
+  if (!convo || !answer || Number(answer[1]) !== convo.step) return;
+  await processAnswer(chatId, answer[2]);
 }
 
 async function pollBot() {
@@ -739,144 +610,40 @@ function computeGuitarStreak() {
 // =============================================
 async function sendSundayReport() {
   if (!CHAT_ID) return;
-  const weekSet = new Set(currentWeekDates());
-  const week = dailyActivities.filter(a => weekSet.has(a.date));
-  const gymDays = week.filter(a => a.gymTime && !/no/i.test(a.gymTime)).length;
-  const sportDays = week.filter(a => a.sportPlayed && !/^❌|^no/i.test(a.sportPlayed)).length;
-  const sweetsCount = week.filter(a => a.ateSweets).length;
-  const perfectMornings = week.filter(a => /perfect/i.test(a.morningRoutine)).length;
+  const activeDays = weekStats();
   const guitarStreak = computeGuitarStreak();
 
   let verdict;
-  if (gymDays >= 4 && sportDays >= 2) verdict = "Solid week. Keep this energy. 🔥";
-  else if (gymDays >= 3) verdict = "Decent — but you missed the target. Tighten up next week. ⚠️";
+  if (activeDays >= 4) verdict = "Solid week. Keep this energy. 🔥";
+  else if (activeDays >= 3) verdict = "Decent — but you missed the target. Tighten up next week. ⚠️";
   else verdict = "Weak week. No more excuses. Reset Monday. 💀";
 
   const msg =
     `📊 *Weekly Report*\n\n` +
-    `🏋️ Gym: ${gymDays}/4 days\n` +
-    `🏃 Sports: ${sportDays}/2 days\n` +
-    `🎸 Guitar streak: ${guitarStreak} days\n` +
-    `🍬 Sweets: ${sweetsCount} days\n` +
-    `🌅 Perfect mornings: ${perfectMornings}/7\n\n` +
+    `🏋️ Gym or sports: ${activeDays}/4 days\n` +
+    `🎸 Guitar streak: ${guitarStreak} days\n\n` +
     `${verdict}`;
   await sendTelegramMessage(msg);
 }
 
-// =============================================
-// SMART REMINDERS
-// =============================================
-async function sendMidweekCheck() {
-  if (!CHAT_ID) return;
-  const { gymDays } = weekStats();
-  if (gymDays < 2) {
-    const msg = `💀 It's Wednesday and you've only hit the gym ${gymDays} time${gymDays === 1 ? '' : 's'}. You need ${4 - gymDays} more this week. Stop slacking.`;
-    await sendTelegramMessage(msg);
-  }
-}
-
-async function sendFridayPush() {
-  if (!CHAT_ID) return;
-  const { gymDays, sportDays } = weekStats();
-  if (gymDays < 3) {
-    const msg = `🚨 Friday alert. Gym days this week: ${gymDays}/4. Sports: ${sportDays}/2. Weekend is your last chance. Don't blow it.`;
-    await sendTelegramMessage(msg);
-  }
-}
-
-async function sendRandomMidday() {
-  if (!CHAT_ID) return;
-  // Pick a deterministic day for this week (Mon=1..Fri=5) based on week-of-year so it varies but is reproducible
-  const ist = istNow();
-  const start = new Date(Date.UTC(ist.getUTCFullYear(), 0, 1));
-  const weekOfYear = Math.floor((ist.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000));
-  const chosenDow = (weekOfYear % 5) + 1; // 1..5
-  const todayDow = ist.getUTCDay();
-  if (todayDow !== chosenDow) return;
-  await sendTelegramMessage(`💭 ${getRandomMotivation()}`);
-}
-
-// =============================================
-// CRON SCHEDULES (UTC; IST = UTC+5:30)
-// =============================================
-
-// Nag state — tracks whether today's log has been completed
-let dailyNagState = {
-  date: null,       // YYYY-MM-DD that's being nagged for
-  completed: false,  // true once tracking is done for this date
-  nagCount: 0,       // how many nag messages sent today
-};
-
-function markNagComplete() {
-  dailyNagState.completed = true;
-  console.log(`✅ Daily nag marked complete for ${dailyNagState.date}`);
-}
-
-function isTodayLogged() {
-  const today = todayDateIST();
-  // Check if activity exists for today
-  if (dailyActivities.find(a => a.date === today)) return true;
-  // Check nag state
-  if (dailyNagState.date === today && dailyNagState.completed) return true;
-  return false;
-}
-
-// Daily 8 AM IST = 02:30 UTC — first prompt
-cron.schedule('30 2 * * *', async () => {
-  if (BOT_TOKEN && CHAT_ID) {
+// GitHub Actions handles production reminders. Standalone servers can opt in.
+if (LOCAL_REMINDERS_ENABLED && BOT_TOKEN && CHAT_ID) {
+  cron.schedule('30 2 * * *', async () => {
     const today = todayDateIST();
-    dailyNagState = { date: today, completed: false, nagCount: 1 };
-    console.log('⏰ 8 AM IST auto-prompt triggered');
-    await startTracking(parseInt(CHAT_ID));
-  }
-});
+    const state = loadFile(BOT_STATE_FILE, {});
+    if (state.dailyPromptDate === today || dailyActivities.some(a => a.date === today)) return;
 
-// Hourly follow-ups: 9 AM, 10 AM, 11 AM, 12 PM, 1 PM, ... up to 10 PM IST
-// = 03:30, 04:30, 05:30, 06:30, 07:30, ... 16:30 UTC
-cron.schedule('30 3-16 * * *', async () => {
-  if (!BOT_TOKEN || !CHAT_ID) return;
-  if (isTodayLogged()) return;
-  
-  dailyNagState.nagCount++;
-  const hour = dailyNagState.nagCount;
-  
-  // Vary the message style
-  const nagMessages = [
-    `⏰ Reminder #${hour}: Log your day. Type *log*.`,
-    `👀 Still waiting on today's log...`,
-    `${currentThemeLine()}\n\nYou haven't logged today. Type *log*.`,
-    `🔔 Hey. The tracker is waiting. Just type *log*.`,
-    `💀 ${hour} hours since first reminder. Log. Your. Day.`,
-    `📋 Quick reminder — type *log* to track today.`,
-    `${getRandomMotivation()}\n\n...and log your day. Type *log*.`,
-  ];
-  const msg = nagMessages[Math.floor(Math.random() * nagMessages.length)];
-  await sendTelegramMessage(msg);
-  console.log(`🔔 Hourly nag #${hour} sent`);
-});
+    try {
+      state.dailyPromptDate = today;
+      fs.writeFileSync(BOT_STATE_FILE, JSON.stringify(state, null, 2) + '\n');
+      await sendTelegramMessage('📋 Daily Tracker — type *log* to record today’s activities.');
+    } catch (error) {
+      console.error('Failed to claim daily tracker prompt:', error.message);
+    }
+  }, { timezone: 'Etc/UTC' });
 
-// Wednesday 8 PM IST = 14:30 UTC Wed
-cron.schedule('30 14 * * 3', async () => {
-  console.log('⏰ Wednesday midweek check');
-  await sendMidweekCheck();
-});
-
-// Friday 8 PM IST = 14:30 UTC Fri
-cron.schedule('30 14 * * 5', async () => {
-  console.log('⏰ Friday push');
-  await sendFridayPush();
-});
-
-// Sunday 10:30 PM IST = 17:00 UTC Sun
-cron.schedule('0 17 * * 0', async () => {
-  console.log('⏰ Sunday weekly report');
-  await sendSundayReport();
-});
-
-// Random midday motivation: daily at 1 PM IST = 7:30 UTC, but only fires on chosen weekday
-cron.schedule('30 7 * * *', async () => {
-  await sendRandomMidday();
-});
+  cron.schedule('0 17 * * 0', sendSundayReport, { timezone: 'Etc/UTC' });
+}
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
@@ -885,7 +652,7 @@ app.listen(PORT, () => {
   console.log(`📊 Loaded: ${notes.length} notes, ${labels.length} labels, ${dailyActivities.length} activities`);
   if (BOT_TOKEN) {
     console.log('🤖 Telegram bot polling started...');
-    console.log('⏰ Daily 8 AM IST + hourly nags + smart reminders active');
+    if (LOCAL_REMINDERS_ENABLED && CHAT_ID) console.log('⏰ Daily 8 AM IST reminder active');
     pollBot();
   } else {
     console.log('⚠️ No TELEGRAM_BOT_TOKEN set, bot polling disabled');

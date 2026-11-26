@@ -125,9 +125,11 @@ function normalizeMorningValue(value) {
 function normalizeActivity(a) {
   if (!a) return a;
   const out = { ...a };
-  out.morningRoutine = normalizeMorningValue(
-    out.morningRoutine || (out.fuckedMorning ? 'Snoozed / lazy start' : '')
-  );
+  if (out.morningRoutine != null || out.fuckedMorning) {
+    out.morningRoutine = normalizeMorningValue(
+      out.morningRoutine || (out.fuckedMorning ? 'Snoozed / lazy start' : '')
+    );
+  }
   delete out.fuckedMorning;
   return out;
 }
@@ -164,15 +166,12 @@ export async function syncActivitiesFromCloud() {
 export function saveActivity(data) {
   const activities = getActivities();
   const existing = activities.findIndex((a) => a.date === data.date);
-  const { fuckedMorning, ...rest } = data;
-  const entry = {
+  const entry = normalizeActivity({
     ...(existing !== -1 ? activities[existing] : {}),
-    ...rest,
-    morningRoutine: normalizeMorningValue(rest.morningRoutine ?? (fuckedMorning ? 'Snoozed / lazy start' : '')),
+    ...data,
     id: existing !== -1 ? activities[existing].id : generateId(),
     updatedAt: new Date().toISOString(),
-  };
-  delete entry.fuckedMorning;
+  });
   if (existing !== -1) {
     activities[existing] = entry;
   } else {
@@ -184,8 +183,7 @@ export function saveActivity(data) {
 
 /** Save locally, push to GitHub, then reload from API so UI matches repo. */
 export async function saveActivityWithCloudSync(data) {
-  const normalized = normalizeActivity(data);
-  const entry = saveActivity(normalized);
+  const entry = saveActivity(data);
   const activities = getActivities();
   const cloud = await pushActivitiesToGithub(activities);
 
@@ -196,7 +194,7 @@ export async function saveActivityWithCloudSync(data) {
     }
   }
 
-  return { entry: getActivities().find((a) => a.date === normalized.date) || entry, cloud };
+  return { entry: getActivities().find((a) => a.date === data.date) || entry, cloud };
 }
 
 // ── Notification Settings ─────────────────────────────
