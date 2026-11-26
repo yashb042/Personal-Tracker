@@ -421,16 +421,18 @@
   },
   {
     "date": "2026-11-26",
-    "sleepTime": "1 AM",
+    "sleepTime": "11 PM",
     "wakeUpTime": "6:30 AM",
-    "laptopDropTime": "10:30 PM",
+    "laptopDropTime": "10 PM",
     "gymTime": "6 PM",
     "sportPlayed": "🏸 Badminton",
-    "practicedGuitar": false,
+    "practicedGuitar": true,
     "ateSweets": false,
     "morningRoutine": "Scrolled socials",
     "plannedTomorrow": false,
     "id": "mwxg5n11bbe68o0q8ng",
-    "updatedAt": "2026-11-26T11:06:05.653Z"
+    "updatedAt": "2026-11-26T11:15:39.773Z",
+    "kegel": "Once",
+    "gymOrSports": true
   }
 ]
