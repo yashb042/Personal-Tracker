@@ -1,8 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getActivities, saveActivityWithCloudSync, syncActivitiesFromCloud } from '../storage';
+import { defaultActivity, gymOrSportsValue } from '../activityFields';
 import './DailyTracker.css';
 
 const QUESTIONS = [
+  {
+    key: 'kegel',
+    label: 'Did you do Kegels?',
+    icon: '🔁',
+    type: 'chips',
+    options: [['Once', 'Twice', 'No']],
+  },
   {
     key: 'sleepTime',
     label: 'When did you sleep?',
@@ -37,48 +45,16 @@ const QUESTIONS = [
     ],
   },
   {
-    key: 'gymTime',
-    label: 'Gym today?',
+    key: 'gymOrSports',
+    label: 'Gym or sports today?',
     icon: '🏋️',
-    type: 'chips',
-    options: [
-      ['6 AM', '7 AM', '8 AM'],
-      ['5 PM', '6 PM', '7 PM'],
-      ['Other time', '❌ No gym today'],
-    ],
-  },
-  {
-    key: 'sportPlayed',
-    label: 'Sport today?',
-    icon: '🏃',
-    type: 'chips',
-    options: [
-      ['⚽ Football', '🏏 Cricket', '🏸 Badminton'],
-      ['🏊 Swimming', '🏃 Running', 'Other sport'],
-      ['❌ No sport'],
-    ],
+    type: 'yesno',
   },
   {
     key: 'practicedGuitar',
     label: 'Practice guitar?',
     icon: '🎸',
     type: 'yesno',
-  },
-  {
-    key: 'ateSweets',
-    label: 'Eat sweets?',
-    icon: '🍬',
-    type: 'yesno',
-  },
-  {
-    key: 'morningRoutine',
-    label: 'Morning',
-    icon: '🌅',
-    type: 'chips',
-    options: [
-      ['Perfect morning', 'Opened Slack first'],
-      ['Scrolled socials', 'Snoozed / lazy start'],
-    ],
   },
   {
     key: 'plannedTomorrow',
@@ -88,45 +64,13 @@ const QUESTIONS = [
   },
 ];
 
-const EMPTY_FORM = (date) => ({
-  date,
-  sleepTime: '',
-  wakeUpTime: '',
-  laptopDropTime: '',
-  gymTime: '',
-  sportPlayed: '',
-  practicedGuitar: false,
-  ateSweets: false,
-  morningRoutine: '',
-  plannedTomorrow: false,
-});
-
-function normalizeMorningValue(value) {
-  if (!value) return '';
-  const v = String(value);
-  if (/perfect/i.test(v)) return 'Perfect morning';
-  if (/slack/i.test(v)) return 'Opened Slack first';
-  if (/scroll|social/i.test(v)) return 'Scrolled socials';
-  if (/snooz|lazy|bad/i.test(v) || value === true) return 'Snoozed / lazy start';
-  return v.replace(/✅|📱|📺|🛏️/g, '').trim() || v;
-}
-
 function normalizeForm(activity) {
-  if (!activity) return null;
-  return {
-    date: activity.date,
-    sleepTime: activity.sleepTime || '',
-    wakeUpTime: activity.wakeUpTime || '',
-    laptopDropTime: activity.laptopDropTime || '',
-    gymTime: activity.gymTime || '',
-    sportPlayed: activity.sportPlayed || '',
-    practicedGuitar: !!activity.practicedGuitar,
-    ateSweets: !!activity.ateSweets,
-    morningRoutine: normalizeMorningValue(
-      activity.morningRoutine || (activity.fuckedMorning ? 'Snoozed / lazy start' : '')
-    ),
-    plannedTomorrow: !!activity.plannedTomorrow,
-  };
+  const form = defaultActivity(activity.date);
+  for (const { key } of QUESTIONS) {
+    const value = key === 'gymOrSports' ? gymOrSportsValue(activity) : activity[key];
+    if (value != null && value !== '') form[key] = value;
+  }
+  return form;
 }
 
 function ChipOptions({ options, value, onChange }) {
@@ -168,18 +112,16 @@ function YesNoChips({ value, onChange }) {
   );
 }
 
-function displayValue(key, value) {
+function displayValue(value) {
   if (!value && value !== false) return null;
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-  if (key === 'gymTime' && /no/i.test(value)) return 'No gym';
-  if (key === 'sportPlayed' && /no/i.test(value)) return 'No sport';
   return String(value);
 }
 
 function DailyTracker() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().split('T')[0];
   const [activities, setActivities] = useState([]);
-  const [formData, setFormData] = useState(EMPTY_FORM(today));
+  const [formData, setFormData] = useState(() => defaultActivity(today));
   const [saved, setSaved] = useState(false);
   const [todayExists, setTodayExists] = useState(false);
   const [view, setView] = useState('today');
@@ -188,41 +130,14 @@ function DailyTracker() {
   const [syncing, setSyncing] = useState(false);
   const isTelegramWebApp = typeof window !== 'undefined' && !!window.Telegram?.WebApp;
 
-  const getYesterday = () => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return d.toISOString().split('T')[0];
-  };
-
   const loadFromStorage = useCallback(() => {
     const all = getActivities();
     const sorted = [...all].sort((a, b) => b.date.localeCompare(a.date));
     setActivities(sorted);
 
     const todayActivity = sorted.find((a) => a.date === today);
-    const yesterdayActivity = sorted.find((a) => a.date === getYesterday());
-
-    if (todayActivity) {
-      setTodayExists(true);
-      setFormData(normalizeForm(todayActivity));
-    } else if (yesterdayActivity) {
-      const y = normalizeForm(yesterdayActivity);
-      setFormData({
-        ...EMPTY_FORM(today),
-        sleepTime: y.sleepTime,
-        wakeUpTime: y.wakeUpTime,
-        laptopDropTime: y.laptopDropTime,
-        gymTime: '',
-        sportPlayed: '',
-        practicedGuitar: y.practicedGuitar,
-        ateSweets: false,
-        morningRoutine: '',
-        plannedTomorrow: false,
-      });
-    } else {
-      setTodayExists(false);
-      setFormData(EMPTY_FORM(today));
-    }
+    setTodayExists(Boolean(todayActivity));
+    setFormData(todayActivity ? normalizeForm(todayActivity) : defaultActivity(today));
   }, [today]);
 
   const refreshFromCloud = useCallback(async () => {
@@ -245,12 +160,7 @@ function DailyTracker() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaveStatus('saving');
-    const payload = {
-      ...formData,
-      morningRoutine: normalizeMorningValue(formData.morningRoutine),
-    };
-    delete payload.fuckedMorning;
-    const { cloud } = await saveActivityWithCloudSync(payload);
+    const { cloud } = await saveActivityWithCloudSync(formData);
     loadFromStorage();
     setSaved(true);
     setTodayExists(true);
@@ -325,6 +235,7 @@ function DailyTracker() {
         <div className="checkin-card">
           <div className="checkin-date">
             {new Date(today).toLocaleDateString('en-US', {
+              timeZone: 'UTC',
               weekday: 'long',
               month: 'long',
               day: 'numeric',
@@ -381,6 +292,7 @@ function DailyTracker() {
                 <div key={activity.id || activity.date} className="history-popup fade-in">
                   <div className="popup-date">
                     {new Date(activity.date).toLocaleDateString('en-US', {
+                      timeZone: 'UTC',
                       weekday: 'short',
                       month: 'short',
                       day: 'numeric',
@@ -388,13 +300,8 @@ function DailyTracker() {
                   </div>
                   <div className="popup-items">
                     {QUESTIONS.map((q) => {
-                      const raw =
-                        q.key === 'morningRoutine'
-                          ? activity.morningRoutine || (activity.fuckedMorning ? 'Snoozed / lazy start' : '')
-                          : activity[q.key];
                       const val = displayValue(
-                        q.key,
-                        q.key === 'morningRoutine' ? normalizeMorningValue(raw) : raw
+                        q.key === 'gymOrSports' ? gymOrSportsValue(activity) : activity[q.key]
                       );
                       if (!val) return null;
                       return (

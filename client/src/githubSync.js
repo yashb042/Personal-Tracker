@@ -1,7 +1,6 @@
 const REPO = 'yashb042/Personal-Tracker';
 const BRANCH = 'master';
 const ACTIVITIES_PATH = 'data/activities.json';
-const BOT_STATE_PATH = 'data/bot-state.json';
 
 export function getGithubPat() {
   try {
@@ -13,11 +12,6 @@ export function getGithubPat() {
 
 export function setGithubPat(pat) {
   localStorage.setItem('pt_github_pat', (pat || '').trim());
-}
-
-function todayDateIST() {
-  const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
-  return ist.toISOString().split('T')[0];
 }
 
 function toBase64Utf8(str) {
@@ -86,25 +80,6 @@ export async function fetchActivitiesFromGithub(pat) {
   }
 }
 
-async function markTodayLoggedInBotState(headers) {
-  let state = {
-    botPollingOffset: 0,
-    conversations: {},
-    dailyNagState: { date: null, completed: false, nagCount: 0 },
-  };
-  try {
-    state = await getJsonFile(BOT_STATE_PATH, headers);
-  } catch { /* use default */ }
-  const today = todayDateIST();
-  state.dailyNagState = { date: today, completed: true, nagCount: 0 };
-  await putFile(
-    BOT_STATE_PATH,
-    JSON.stringify(state, null, 2) + '\n',
-    'chore: mark daily log complete from tracker app',
-    headers
-  );
-}
-
 export async function pushActivitiesToGithub(activities) {
   const pat = getGithubPat();
   if (!pat) return { ok: false, reason: 'no_pat' };
@@ -118,11 +93,6 @@ export async function pushActivitiesToGithub(activities) {
       'chore: update activities from tracker app',
       headers
     );
-    try {
-      await markTodayLoggedInBotState(headers);
-    } catch {
-      return { ok: true, warning: 'bot_state_failed' };
-    }
     return { ok: true };
   } catch (e) {
     return { ok: false, reason: e.message || 'write_failed' };

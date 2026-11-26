@@ -4,7 +4,7 @@
 
 | Piece | Role |
 |-------|------|
-| **GitHub Actions** | Sends Telegram reminders (8 AM, hourly nags, weekly report) |
+| **GitHub Actions** | Sends one Telegram check-in per day and a Sunday report |
 | **GitHub Pages** | Hosts the tracker app inside Telegram as a **Web App** |
 | **Telegram “Open Tracker” button** | Opens the app instantly — no 2‑minute wait, no extra hosting, no laptop |
 
@@ -41,7 +41,7 @@ Live app: https://yashb042.github.io/Personal-Tracker/
 3. Add a fine-grained token with **Contents: Read and write** on `Personal-Tracker`
 4. Save — stored in your browser only
 
-After this, saving in the Telegram Web App writes to GitHub immediately and stops hourly nags for that day.
+After this, saving in the Telegram Web App writes to GitHub immediately. The scheduled check-in is skipped if you have already logged that day.
 
 ## Daily use
 
@@ -49,13 +49,11 @@ After this, saving in the Telegram Web App writes to GitHub immediately and stop
 2. Tap **📱 Open Tracker (instant)**
 3. Fill the form → **Save** (closes in Telegram when sync succeeds)
 
-Optional: type `log` in Telegram to get the same Open Tracker button again.
-
 ## What runs on GitHub
 
 | Workflow | Schedule |
 |----------|----------|
-| `tracker-scheduler.yml` | 8 AM prompt, hourly nags, Wed/Fri/Sun reports |
+| `tracker-scheduler.yml` | Daily check-in at 8 AM IST, Sunday report at 10:30 PM IST |
 | `deploy.yml` | Deploys app on every push to `master` |
 
 `telegram-bot.yml` is **disabled** (slow polling is not used).

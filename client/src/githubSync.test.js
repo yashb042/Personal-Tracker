@@ -1,4 +1,7 @@
-import { fetchActivitiesFromGithub, getGithubPat, setGithubPat } from './githubSync';
+import { TextEncoder } from 'util';
+import { fetchActivitiesFromGithub, getGithubPat, pushActivitiesToGithub, setGithubPat } from './githubSync';
+
+global.TextEncoder = TextEncoder;
 
 afterEach(() => {
   localStorage.clear();
@@ -29,5 +32,21 @@ test('loads activities through the raw contents API', async () => {
         Accept: 'application/vnd.github.raw+json',
       }),
     })
+  );
+});
+
+test('saves activities without rewriting the scheduler state', async () => {
+  setGithubPat('github_pat_test');
+  global.fetch = jest.fn()
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ sha: 'current' }) })
+    .mockResolvedValueOnce({ ok: true });
+
+  const result = await pushActivitiesToGithub([{ date: '2026-11-26', practicedGuitar: true }]);
+
+  expect(result).toEqual({ ok: true });
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(fetch).toHaveBeenLastCalledWith(
+    expect.stringContaining('/contents/data/activities.json'),
+    expect.objectContaining({ method: 'PUT' })
   );
 });

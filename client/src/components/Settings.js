@@ -198,7 +198,7 @@ function Settings() {
             <div className="feature-list">
               <div className="feature-item">✅ Open Tracker in Telegram (instant)</div>
               <div className="feature-item">✅ Laptop can be off</div>
-              <div className="feature-item">✅ 8 AM + hourly reminders</div>
+              <div className="feature-item">✅ One check-in per day at 8 AM IST</div>
               <div className="feature-item">✅ GitHub token → instant cloud save</div>
             </div>
           </div>

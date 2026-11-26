@@ -5,6 +5,9 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import activityFields from '../client/src/activityFields.js';
+
+const { gymOrSportsValue } = activityFields;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -30,35 +33,6 @@ const THEMES = [
   (d) => `🦁 HUNT YOUR GOAL. ${d} days remaining. Stay savage.`,
 ];
 
-const MOTIVATIONAL_POOL = [
-  'You paid for that gym membership. Use it or lose it.',
-  "Excuses don't burn calories. Move.",
-  "Skipping today is stealing from tomorrow's you.",
-  'Comfort is a slow death. Get up.',
-  'Stop scrolling. Start sweating.',
-  'Your muscles are filing a missing person report.',
-  "30 minutes. That's it. You spend more time on Instagram.",
-  'Discipline is choosing between what you want now and what you want most.',
-  "Someone out there is training while you're on the couch. Catch up.",
-  "Nobody's going to do this for you. Get up.",
-  "The gym doesn't care about your mood. Go anyway.",
-  () => `You have ${daysUntilTarget()} days till July 31. Don't waste them.`,
-];
-
-const TRACKING_STEPS = [
-  { key: 'sleepTime', question: '🛏️ What time did you sleep last night?', options: [['9 PM', '9:30 PM', '10 PM'], ['10:30 PM', '11 PM', '11:30 PM'], ['12 AM', '12:30 AM', '1 AM'], ['After 1 AM']] },
-  { key: 'wakeUpTime', question: '⏰ What time did you wake up today?', options: [['5 AM', '5:30 AM', '6 AM'], ['6:30 AM', '7 AM', '7:30 AM'], ['8 AM', '8:30 AM', '9 AM'], ['After 9 AM']] },
-  { key: 'laptopDropTime', question: '💻 What time did you stop working / close your laptop?', options: [['5 PM', '5:30 PM', '6 PM'], ['6:30 PM', '7 PM', '7:30 PM'], ['8 PM', '9 PM', '10 PM'], ['After 10 PM']] },
-  { key: 'gymTime', question: '🏋️ Did you go to the gym? If yes, what time?', options: [['6 AM', '7 AM', '8 AM'], ['5 PM', '6 PM', '7 PM'], ['Other time'], ['❌ No gym today']] },
-  { key: 'sportPlayed', question: '🏃 Did you play any sport today?', options: [['⚽ Football', '🏏 Cricket'], ['🏸 Badminton', '🏊 Swimming'], ['🏃 Running', 'Other sport'], ['❌ No sport']] },
-  { key: 'practicedGuitar', question: '🎸 Did you practice guitar today?', options: [['✅ Yes', '❌ No']] },
-  { key: 'ateSweets', question: '🍬 Did you eat sweets today?', options: [['✅ Yes', '❌ No']] },
-  { key: 'morningRoutine', question: '🌅 Morning', options: [['Perfect morning', 'Opened Slack first'], ['Scrolled socials', 'Snoozed / lazy start']] },
-  { key: 'plannedTomorrow', question: '📋 Did you plan stuff for tomorrow?', options: [['✅ Yes', '❌ No']] },
-];
-
-const BOOLEAN_KEYS = new Set(['practicedGuitar', 'plannedTomorrow', 'ateSweets']);
-
 // ── Data I/O ──────────────────────────────────────────
 function ensureDataDir() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -77,22 +51,15 @@ function saveJson(file, data) {
   fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
 }
 
-let dailyActivities = loadJson(ACTIVITIES_FILE, []);
-let state = loadJson(STATE_FILE, {
+const dailyActivities = loadJson(ACTIVITIES_FILE, []);
+const state = loadJson(STATE_FILE, {
   botPollingOffset: 0,
   conversations: {},
-  dailyNagState: { date: null, completed: false, nagCount: 0 },
 });
-
-function persistActivities() {
-  saveJson(ACTIVITIES_FILE, dailyActivities);
-}
 
 function persistState() {
   saveJson(STATE_FILE, state);
 }
-
-const generateId = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
 
 // ── Date helpers (IST) ────────────────────────────────
 function istNow() {
@@ -105,7 +72,7 @@ function todayDateIST() {
 
 function formatDateNice(dateStr) {
   const d = new Date(dateStr + 'T00:00:00+05:30');
-  return d.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  return d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 function daysUntilTarget() {
@@ -121,11 +88,6 @@ function currentThemeLine() {
   return THEMES[themeIndex](left);
 }
 
-function getRandomMotivation() {
-  const item = MOTIVATIONAL_POOL[Math.floor(Math.random() * MOTIVATIONAL_POOL.length)];
-  return typeof item === 'function' ? item() : item;
-}
-
 function startOfWeekIST() {
   const ist = istNow();
   const day = ist.getUTCDay();
@@ -136,7 +98,7 @@ function startOfWeekIST() {
 
 function currentWeekDates() {
   const monStr = startOfWeekIST();
-  const monDate = new Date(monStr + 'T00:00:00+05:30');
+  const monDate = new Date(monStr + 'T00:00:00Z');
   const out = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(monDate.getTime() + i * 24 * 60 * 60 * 1000);
@@ -148,28 +110,13 @@ function currentWeekDates() {
 function weekStats() {
   const weekSet = new Set(currentWeekDates());
   const week = dailyActivities.filter((a) => weekSet.has(a.date));
-  const gymDays = week.filter((a) => a.gymTime && !/no/i.test(a.gymTime)).length;
-  const sportDays = week.filter((a) => a.sportPlayed && !/^❌|^no/i.test(a.sportPlayed)).length;
-  return { gymDays, sportDays, weekCount: week.length };
+  return week.filter(gymOrSportsValue).length;
 }
 
 function weekProgressLine() {
-  const { gymDays, sportDays } = weekStats();
-  const gymStatus = gymDays >= 4 ? '✅' : gymDays >= 2 ? '⚠️' : '💀';
-  const sportStatus = sportDays >= 2 ? '✅' : sportDays >= 1 ? '⚠️' : '💀';
-  return `This week: ${gymDays}/4 gym days ${gymStatus} | ${sportDays}/2 sport days ${sportStatus}`;
-}
-
-function isTodayLogged() {
-  const today = todayDateIST();
-  if (dailyActivities.find((a) => a.date === today)) return true;
-  if (state.dailyNagState.date === today && state.dailyNagState.completed) return true;
-  return false;
-}
-
-function markNagComplete() {
-  state.dailyNagState.completed = true;
-  persistState();
+  const activeDays = weekStats();
+  const status = activeDays >= 4 ? '✅' : activeDays >= 2 ? '⚠️' : '💀';
+  return `This week: ${activeDays}/4 gym or sports days ${status}`;
 }
 
 function computeGuitarStreak() {
@@ -219,41 +166,6 @@ async function answerCallback(callbackQueryId) {
   } catch { /* ignore */ }
 }
 
-function flattenOptions(options) {
-  const flat = [];
-  for (const row of options) {
-    for (const text of row) flat.push(text);
-  }
-  return flat;
-}
-
-function buildInlineKeyboard(stepIndex, options) {
-  let optIdx = 0;
-  return {
-    reply_markup: {
-      inline_keyboard: options.map((row) =>
-        row.map((text) => {
-          const cb = `t:${stepIndex}:${optIdx}`;
-          optIdx++;
-          return { text, callback_data: cb };
-        })
-      ),
-    },
-  };
-}
-
-function answerFromCallback(stepIndex, optIndex) {
-  const step = TRACKING_STEPS[stepIndex];
-  if (!step) return null;
-  const flat = flattenOptions(step.options);
-  return flat[optIndex] ?? null;
-}
-
-async function sendStep(chatId, stepIndex) {
-  const step = TRACKING_STEPS[stepIndex];
-  await sendMessage(chatId, step.question, buildInlineKeyboard(stepIndex, step.options));
-}
-
 async function sendInstantLogPrompt(chatId) {
   const date = todayDateIST();
   await sendMessage(
@@ -261,86 +173,6 @@ async function sendInstantLogPrompt(chatId) {
     `${currentThemeLine()}\n\n📋 *Daily Tracker — ${formatDateNice(date)}*\n\nTap below to log instantly (opens in Telegram, no wait):`,
     trackerWebAppMarkup()
   );
-}
-
-async function processAnswer(chatId, answerText) {
-  const key = String(chatId);
-  const convo = state.conversations[key];
-  if (!convo) return;
-
-  const currentStep = TRACKING_STEPS[convo.step];
-
-  if (convo.awaitingFreeText === 'morningRoutine') {
-    convo.answers.morningRoutine = answerText;
-    convo.awaitingFreeText = null;
-    convo.step++;
-  } else if (currentStep.key === 'morningRoutine' && /other/i.test(answerText)) {
-    convo.awaitingFreeText = 'morningRoutine';
-    await sendMessage(chatId, '✍️ Type what you did this morning:');
-    persistState();
-    return;
-  } else if (BOOLEAN_KEYS.has(currentStep.key)) {
-    convo.answers[currentStep.key] = /yes|✅/i.test(answerText);
-    convo.step++;
-  } else if (currentStep.key === 'gymTime' && /no|❌/i.test(answerText)) {
-    convo.answers.gymTime = 'No';
-    convo.step++;
-  } else if (currentStep.key === 'sportPlayed' && /no|❌/i.test(answerText)) {
-    convo.answers.sportPlayed = 'No';
-    convo.step++;
-  } else {
-    convo.answers[currentStep.key] = answerText;
-    convo.step++;
-  }
-
-  if (convo.step < TRACKING_STEPS.length) {
-    persistState();
-    await sendStep(chatId, convo.step);
-    return;
-  }
-
-  const i = dailyActivities.findIndex((a) => a.date === convo.date);
-  const existing = i !== -1 ? dailyActivities[i] : null;
-  const saved = {
-    id: existing ? existing.id : generateId(),
-    date: convo.date,
-    sleepTime: convo.answers.sleepTime || '',
-    wakeUpTime: convo.answers.wakeUpTime || '',
-    laptopDropTime: convo.answers.laptopDropTime || '',
-    gymTime: convo.answers.gymTime || '',
-    sportPlayed: convo.answers.sportPlayed || '',
-    practicedGuitar: convo.answers.practicedGuitar || false,
-    ateSweets: convo.answers.ateSweets || false,
-    morningRoutine: convo.answers.morningRoutine || '',
-    plannedTomorrow: convo.answers.plannedTomorrow || false,
-    createdAt: existing ? existing.createdAt : new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  if (i !== -1) dailyActivities[i] = saved;
-  else dailyActivities.push(saved);
-  persistActivities();
-
-  const guitar = saved.practicedGuitar ? '✅ Yes' : '❌ No';
-  const sweets = saved.ateSweets ? '✅ Yes' : '❌ No';
-  const sport = saved.sportPlayed && saved.sportPlayed !== 'No' ? saved.sportPlayed : '❌ No';
-
-  const summary =
-    `✅ *Activity saved for ${formatDateNice(saved.date)}!*\n\n` +
-    `🛏️ Sleep: ${saved.sleepTime}\n` +
-    `⏰ Wake up: ${saved.wakeUpTime}\n` +
-    `💻 Laptop drop: ${saved.laptopDropTime}\n` +
-    `🏋️ Gym: ${saved.gymTime}\n` +
-    `🏃 Sport: ${sport}\n` +
-    `🎸 Guitar: ${guitar}\n` +
-    `🍬 Sweets: ${sweets}\n` +
-    `🌅 Morning: ${saved.morningRoutine || '-'}\n` +
-    `📋 Planned tomorrow: ${saved.plannedTomorrow ? '✅ Yes' : '❌ No'}\n\n` +
-    `📊 ${weekProgressLine()}\n\n` +
-    `Type *history* to view past entries.`;
-
-  await sendMessage(chatId, summary);
-  delete state.conversations[key];
-  markNagComplete();
 }
 
 async function handleBotMessage(msg) {
@@ -354,7 +186,7 @@ async function handleBotMessage(msg) {
       '👋 *Personal Tracker* (GitHub cloud)\n\n' +
         '• Tap *Open Tracker* below — instant form in Telegram\n' +
         '• *history* — last 7 days\n' +
-        '• *week* — gym/sport stats\n\n' +
+        '• *week* — gym or sports stats\n\n' +
         'Reminders run on GitHub Actions. Your laptop can be off.\n' +
         'One-time: add a GitHub token in the app Settings for instant save.',
       trackerWebAppMarkup()
@@ -380,10 +212,10 @@ async function handleBotMessage(msg) {
     }
     let historyMsg = '📊 *Last 7 days:*\n';
     for (const a of sorted) {
-      const sport = a.sportPlayed && a.sportPlayed !== 'No' ? a.sportPlayed : '❌';
+      const active = gymOrSportsValue(a);
       historyMsg += `\n📅 *${formatDateNice(a.date)}*\n`;
       historyMsg += `  🛏️ ${a.sleepTime || '-'} | ⏰ ${a.wakeUpTime || '-'}\n`;
-      historyMsg += `  🏋️ ${a.gymTime || '-'} | 🏃 ${sport}\n`;
+      historyMsg += `  🏋️ Gym or sports: ${active === undefined ? '–' : active ? 'Yes' : 'No'}\n`;
     }
     historyMsg += `\n${weekProgressLine()}`;
     await sendMessage(chatId, historyMsg);
@@ -402,7 +234,8 @@ async function handleBotMessage(msg) {
   }
 
   if (state.conversations[String(chatId)]) {
-    await processAnswer(chatId, text);
+    delete state.conversations[String(chatId)];
+    await sendInstantLogPrompt(chatId);
   } else {
     await sendMessage(chatId, 'Type *log* to track today\'s activities.');
   }
@@ -410,32 +243,8 @@ async function handleBotMessage(msg) {
 
 async function handleCallbackQuery(query) {
   const chatId = query.message.chat.id;
-  const raw = query.data || '';
   await answerCallback(query.id);
-
-  let answerText = null;
-  const m = raw.match(/^t:(\d+):(\d+)$/);
-  if (m) {
-    answerText = answerFromCallback(parseInt(m[1], 10), parseInt(m[2], 10));
-  } else if (raw.startsWith('track_')) {
-    answerText = raw.replace(/^track_/, '');
-  }
-
-  if (!answerText) {
-    await sendMessage(chatId, 'Unknown button. Type *log* to start again.');
-    return;
-  }
-
-  const key = String(chatId);
-  if (!state.conversations[key]) {
-    await sendMessage(
-      chatId,
-      'Use *Open Tracker* for instant logging. Type *log* to get the button again.',
-      trackerWebAppMarkup()
-    );
-    return;
-  }
-  await processAnswer(chatId, answerText);
+  await sendInstantLogPrompt(chatId);
 }
 
 // ── Scheduled jobs ────────────────────────────────────
@@ -445,83 +254,43 @@ async function sendTelegramToUser(message, extra = {}) {
 }
 
 async function sendSundayReport() {
-  const weekSet = new Set(currentWeekDates());
-  const week = dailyActivities.filter((a) => weekSet.has(a.date));
-  const gymDays = week.filter((a) => a.gymTime && !/no/i.test(a.gymTime)).length;
-  const sportDays = week.filter((a) => a.sportPlayed && !/^❌|^no/i.test(a.sportPlayed)).length;
-  const sweetsCount = week.filter((a) => a.ateSweets).length;
-  const perfectMornings = week.filter((a) => /perfect/i.test(a.morningRoutine)).length;
+  const activeDays = weekStats();
   const guitarStreak = computeGuitarStreak();
 
   let verdict;
-  if (gymDays >= 4 && sportDays >= 2) verdict = 'Solid week. Keep this energy. 🔥';
-  else if (gymDays >= 3) verdict = 'Decent — but you missed the target. Tighten up next week. ⚠️';
+  if (activeDays >= 4) verdict = 'Solid week. Keep this energy. 🔥';
+  else if (activeDays >= 3) verdict = 'Decent — but you missed the target. Tighten up next week. ⚠️';
   else verdict = 'Weak week. No more excuses. Reset Monday. 💀';
 
   await sendTelegramToUser(
     `📊 *Weekly Report*\n\n` +
-      `🏋️ Gym: ${gymDays}/4 days\n` +
-      `🏃 Sports: ${sportDays}/2 days\n` +
-      `🎸 Guitar streak: ${guitarStreak} days\n` +
-      `🍬 Sweets: ${sweetsCount} days\n` +
-      `🌅 Perfect mornings: ${perfectMornings}/7\n\n` +
+      `🏋️ Gym or sports: ${activeDays}/4 days\n` +
+      `🎸 Guitar streak: ${guitarStreak} days\n\n` +
       verdict
   );
 }
 
-async function sendMidweekCheck() {
-  const { gymDays } = weekStats();
-  if (gymDays < 2) {
-    await sendTelegramToUser(
-      `💀 It's Wednesday and you've only hit the gym ${gymDays} time${gymDays === 1 ? '' : 's'}. You need ${4 - gymDays} more this week. Stop slacking.`
-    );
-  }
-}
-
-async function sendFridayPush() {
-  const { gymDays, sportDays } = weekStats();
-  if (gymDays < 3) {
-    await sendTelegramToUser(
-      `🚨 Friday alert. Gym days this week: ${gymDays}/4. Sports: ${sportDays}/2. Weekend is your last chance. Don't blow it.`
-    );
-  }
-}
-
-async function sendRandomMidday() {
-  const ist = istNow();
-  const start = new Date(Date.UTC(ist.getUTCFullYear(), 0, 1));
-  const weekOfYear = Math.floor((ist.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000));
-  const chosenDow = (weekOfYear % 5) + 1;
-  const todayDow = ist.getUTCDay();
-  if (todayDow !== chosenDow) return;
-  await sendTelegramToUser(`💭 ${getRandomMotivation()}`);
-}
-
-async function runDailyPrompt() {
+function claimDailyPrompt() {
   const today = todayDateIST();
-  state.dailyNagState = { date: today, completed: false, nagCount: 1 };
+  const previous = state.dailyNagState;
+  if (state.dailyPromptDate === today ||
+      (previous?.date === today && (previous.completed || previous.nagCount > 0)) ||
+      dailyActivities.some((activity) => activity.date === today)) {
+    console.log('Daily prompt already claimed or activity already logged');
+    return null;
+  }
+
+  state.dailyPromptDate = today;
   persistState();
-  await sendTelegramToUser(
-    `${currentThemeLine()}\n\n📋 *Daily Tracker — ${formatDateNice(today)}*\n\nTap to log (instant):`,
-    trackerWebAppMarkup()
-  );
+  return today;
 }
 
-async function runHourlyNag() {
-  if (isTodayLogged()) return;
-  state.dailyNagState.nagCount = (state.dailyNagState.nagCount || 0) + 1;
-  persistState();
-  const hour = state.dailyNagState.nagCount;
-  const nagMessages = [
-    `⏰ Reminder #${hour}: Log your day — tap *Open Tracker* below.`,
-    `👀 Still waiting on today's log. Tap below.`,
-    `${currentThemeLine()}\n\nYou haven't logged today.`,
-    `🔔 Quick log — tap below.`,
-    `💀 ${hour} reminders in. Log your day now.`,
-    `${getRandomMotivation()}\n\nLog your day — tap below.`,
-  ];
+async function sendDailyPrompt(date) {
+  if (state.dailyPromptDate !== date || date !== todayDateIST()) {
+    throw new Error('Daily prompt has no claim for today');
+  }
   await sendTelegramToUser(
-    nagMessages[Math.floor(Math.random() * nagMessages.length)],
+    `${currentThemeLine()}\n\n📋 *Daily Tracker — ${formatDateNice(date)}*\n\nTap to log (instant):`,
     trackerWebAppMarkup()
   );
 }
@@ -567,12 +336,18 @@ async function pollBurst() {
 const mode = process.argv[2] || 'poll';
 
 async function main() {
+  ensureDataDir();
+  if (mode === 'claim-daily-prompt') {
+    if (!process.env.GITHUB_OUTPUT) throw new Error('GITHUB_OUTPUT is required');
+    const date = claimDailyPrompt();
+    if (date) fs.appendFileSync(process.env.GITHUB_OUTPUT, `date=${date}\n`);
+    return;
+  }
+
   if (!BOT_TOKEN || !CHAT_ID) {
     console.error('TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are required');
     process.exit(1);
   }
-  ensureDataDir();
-
   switch (mode) {
     case 'poll':
       await pollBot();
@@ -582,25 +357,16 @@ async function main() {
       await pollBurst();
       console.log('Bot poll burst complete');
       break;
-    case 'daily-prompt':
-      await runDailyPrompt();
-      console.log('Daily 8 AM prompt sent');
+    case 'daily-prompt': {
+      const date = claimDailyPrompt();
+      if (date) await sendDailyPrompt(date);
       break;
-    case 'hourly-nag':
-      await runHourlyNag();
-      console.log('Hourly nag sent (if needed)');
-      break;
-    case 'midweek':
-      await sendMidweekCheck();
-      break;
-    case 'friday':
-      await sendFridayPush();
+    }
+    case 'send-daily-prompt':
+      await sendDailyPrompt(process.env.PROMPT_DATE);
       break;
     case 'sunday':
       await sendSundayReport();
-      break;
-    case 'midday':
-      await sendRandomMidday();
       break;
     default:
       console.error(`Unknown mode: ${mode}`);

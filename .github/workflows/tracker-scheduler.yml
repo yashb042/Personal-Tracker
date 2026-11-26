@@ -1,26 +1,20 @@
 name: Tracker Scheduled Reminders
 
-# All cron jobs from server.js — runs on GitHub even when your laptop is off.
 on:
   schedule:
-    # 8:00 AM IST = 02:30 UTC — daily tracking prompt
+    # Daily tracking prompt at 8:00 AM IST
     - cron: '30 2 * * *'
-    # Hourly nags 9 AM–10 PM IST = 03:30–16:30 UTC
-    - cron: '30 3-16 * * *'
-    # Wednesday 8 PM IST = 14:30 UTC
-    - cron: '30 14 * * 3'
-    # Friday 8 PM IST = 14:30 UTC
-    - cron: '30 14 * * 5'
-    # Sunday 10:30 PM IST = 17:00 UTC
+    # Sunday weekly report at 10:30 PM IST
     - cron: '0 17 * * 0'
-    # Random midday ~1 PM IST = 07:30 UTC
-    - cron: '30 7 * * *'
   workflow_dispatch:
     inputs:
       job:
-        description: 'Which job to run (daily-prompt, hourly-nag, midweek, friday, sunday, midday)'
-        required: true
-        default: 'daily-prompt'
+        description: 'Which job to run'
+        type: choice
+        options:
+          - daily-prompt
+          - sunday
+        default: daily-prompt
 
 permissions:
   contents: write
@@ -34,38 +28,52 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Reruns need the latest claim rather than their original commit.
+          ref: master
 
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Determine job from cron or manual input
-        id: job
+      - name: Claim today's prompt
+        id: prompt
+        if: github.event.schedule == '30 2 * * *' || github.event.inputs.job == 'daily-prompt'
+        shell: bash
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "name=${{ github.event.inputs.job }}" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          CRON="${{ github.event.schedule }}"
-          case "$CRON" in
-            "30 2 * * *") echo "name=daily-prompt" >> $GITHUB_OUTPUT ;;
-            "30 3-16 * * *") echo "name=hourly-nag" >> $GITHUB_OUTPUT ;;
-            "30 14 * * 3") echo "name=midweek" >> $GITHUB_OUTPUT ;;
-            "30 14 * * 5") echo "name=friday" >> $GITHUB_OUTPUT ;;
-            "0 17 * * 0") echo "name=sunday" >> $GITHUB_OUTPUT ;;
-            "30 7 * * *") echo "name=midday" >> $GITHUB_OUTPUT ;;
-            *) echo "name=hourly-nag" >> $GITHUB_OUTPUT ;;
-          esac
+          claim_output="$(mktemp)"
+          trap 'rm -f "$claim_output"' EXIT
+          for attempt in 1 2 3; do
+            git fetch --no-tags origin master
+            git switch --detach FETCH_HEAD
+            : > "$claim_output"
+            GITHUB_OUTPUT="$claim_output" node scripts/telegram-tracker.mjs claim-daily-prompt
+            if [[ ! -s "$claim_output" ]]; then
+              exit 0
+            fi
+            git add data/bot-state.json
+            git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m 'chore: claim daily tracker prompt'
+            if git push origin HEAD:master; then
+              cat "$claim_output" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "Could not persist the prompt claim on attempt $attempt of 3."
+          done
+          exit 1
 
-      - name: Run tracker job
+      - name: Send today's prompt
+        if: steps.prompt.outputs.date != ''
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          PAGES_URL: https://yashb042.github.io/Personal-Tracker/
-        run: node scripts/telegram-tracker.mjs ${{ steps.job.outputs.name }}
+          PROMPT_DATE: ${{ steps.prompt.outputs.date }}
+        run: node scripts/telegram-tracker.mjs send-daily-prompt
 
-      - name: Commit data changes
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: 'chore: sync tracker data from scheduled job'
-          file_pattern: 'data/*.json'
+      - name: Send weekly report
+        if: github.event.schedule == '0 17 * * 0' || github.event.inputs.job == 'sunday'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: node scripts/telegram-tracker.mjs sunday
