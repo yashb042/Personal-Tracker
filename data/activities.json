@@ -434,5 +434,17 @@
     "updatedAt": "2026-11-26T11:15:39.773Z",
     "kegel": "Once",
     "gymOrSports": true
+  },
+  {
+    "date": "2026-11-27",
+    "kegel": "Once",
+    "sleepTime": "12 AM",
+    "wakeUpTime": "8 AM",
+    "laptopDropTime": "10 PM",
+    "gymOrSports": true,
+    "practicedGuitar": false,
+    "plannedTomorrow": true,
+    "id": "mwyy1inpj4w4kou267",
+    "updatedAt": "2026-11-27T12:14:32.629Z"
   }
 ]
